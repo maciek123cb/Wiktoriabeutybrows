@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar as CalendarIcon, Clock, MessageSquare, AlertCircle, X } from 'lucide-react'
 import Calendar from './Calendar'
+import { API_URL } from '../config'
 
 const BookingForm = ({ user, onClose, onSuccess }) => {
   const [selectedDate, setSelectedDate] = useState(null)
@@ -20,7 +21,7 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
       const day = String(date.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      const response = await fetch(`http://localhost:3001/api/available-slots/${dateStr}`)
+      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`)
       const data = await response.json()
       setAvailableSlots(data.slots)
     } catch (error) {
@@ -49,7 +50,7 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
 
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/book-appointment', {
+      const response = await fetch(`${API_URL}/api/book-appointment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

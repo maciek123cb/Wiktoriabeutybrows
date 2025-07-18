@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react'
+import { API_URL } from '../config'
 
 const RegisterForm = ({ onBack, onRegisterSuccess }) => {
   const [formData, setFormData] = useState({
@@ -84,7 +85,7 @@ const RegisterForm = ({ onBack, onRegisterSuccess }) => {
     setIsLoading(true)
 
     try {
-      const response = await fetch('http://localhost:3001/api/register', {
+      const response = await fetch(`${API_URL}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

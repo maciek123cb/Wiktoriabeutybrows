@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
+import { API_URL } from '../config'
 
 const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -18,7 +19,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
 
   const fetchAvailableDates = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/available-dates')
+      const response = await fetch(`${API_URL}/api/available-dates`)
       const data = await response.json()
       console.log('Dostępne daty z serwera:', data.dates)
       setAvailableDates(data.dates || [])
