@@ -878,7 +878,7 @@ app.get('/api/articles', async (req, res) => {
   try {
     console.log('Pobieranie artykułów, query:', req.query);
     const { category, limit } = req.query;
-    let query = 'SELECT id, title, slug, excerpt, image_url, category, created_at FROM articles WHERE is_published = 1';
+    let query = 'SELECT id, title, slug, excerpt, image_url, category, created_at FROM articles WHERE is_published = TRUE';
     const params = [];
     
     if (category) {
@@ -907,7 +907,7 @@ app.get('/api/articles/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
     const [articles] = await db.execute(
-      'SELECT * FROM articles WHERE slug = ? AND is_published = 1',
+      'SELECT * FROM articles WHERE slug = ? AND is_published = TRUE',
       [slug]
     );
     
@@ -1006,7 +1006,7 @@ app.get('/api/reviews', async (req, res) => {
              u.first_name, u.last_name
       FROM reviews r
       JOIN users u ON r.user_id = u.id
-      WHERE r.is_approved = 1
+      WHERE r.is_approved = TRUE
       ORDER BY r.created_at DESC
     `;
     

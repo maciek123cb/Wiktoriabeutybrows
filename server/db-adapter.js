@@ -32,7 +32,14 @@ async function initializeDatabase() {
             const convertedQuery = convertMySQLToPostgres(query);
             console.log('Converted query:', convertedQuery);
             
-            const result = await pool.query(convertedQuery, params);
+            // Konwersja parametrów boolean
+            const convertedParams = params.map(param => {
+              if (param === 1 && typeof param === 'number') return true;
+              if (param === 0 && typeof param === 'number') return false;
+              return param;
+            });
+            
+            const result = await pool.query(convertedQuery, convertedParams);
             return [result.rows, result.fields];
           } catch (error) {
             console.error('Błąd wykonania zapytania PostgreSQL:', error);
@@ -98,6 +105,26 @@ function convertMySQLToPostgres(query) {
   // Zamiana składni UNIQUE KEY na UNIQUE
   query = query.replace(/UNIQUE KEY [^(]+/g, 'UNIQUE ');
   
+  // Zamiana wartości boolean (1/0) na TRUE/FALSE
+  query = query.replace(/([\s(])is_published\s*=\s*1([\s)])/g, '$1is_published = TRUE$2');
+  query = query.replace(/([\s(])is_approved\s*=\s*1([\s)])/g, '$1is_approved = TRUE$2');
+  query = query.replace(/([\s(])is_active\s*=\s*1([\s)])/g, '$1is_active = TRUE$2');
+  query = query.replace(/([\s(])is_published\s*=\s*0([\s)])/g, '$1is_published = FALSE$2');
+  query = query.replace(/([\s(])is_approved\s*=\s*0([\s)])/g, '$1is_approved = FALSE$2');
+  query = query.replace(/([\s(])is_active\s*=\s*0([\s)])/g, '$1is_active = FALSE$2');
+  
+  // Ogólna zamiana dla innych pól boolean
+  query = query.replace(/\s+([a-zA-Z_]+)\s*=\s*1\b/g, ' $1 = TRUE');
+  query = query.replace(/\s+([a-zA-Z_]+)\s*=\s*0\b/g, ' $1 = FALSE');
+  
+  // Zamiana w klauzuli WHERE
+  query = query.replace(/WHERE\s+([a-zA-Z_]+)\s*=\s*1\b/g, 'WHERE $1 = TRUE');
+  query = query.replace(/WHERE\s+([a-zA-Z_]+)\s*=\s*0\b/g, 'WHERE $1 = FALSE');
+  
+  // Zamiana w klauzuli AND
+  query = query.replace(/AND\s+([a-zA-Z_]+)\s*=\s*1\b/g, 'AND $1 = TRUE');
+  query = query.replace(/AND\s+([a-zA-Z_]+)\s*=\s*0\b/g, 'AND $1 = FALSE');
+  
   // Zamiana składni parametrów w zapytaniach
   query = query.replace(/\?/g, (match, offset, string) => {
     // Sprawdź czy nie jesteśmy w stringu
@@ -139,7 +166,14 @@ async function runInitScript() {
       if (statement) {
         try {
           console.log(`Wykonywanie zapytania ${i+1}/${statements.length}`);
-          await db.execute(statement);
+          // Konwersja wartości boolean w zapytaniu
+          let processedStatement = statement;
+          if (dbType === 'postgres') {
+            processedStatement = processedStatement.replace(/\bis_published\s*=\s*1\b/g, 'is_published = TRUE');
+            processedStatement = processedStatement.replace(/\bis_approved\s*=\s*1\b/g, 'is_approved = TRUE');
+            processedStatement = processedStatement.replace(/\bis_active\s*=\s*1\b/g, 'is_active = TRUE');
+          }
+          await db.execute(processedStatement);
         } catch (error) {
           console.error(`Błąd wykonania zapytania ${i+1}:`, error);
           console.error('Zapytanie:', statement);
