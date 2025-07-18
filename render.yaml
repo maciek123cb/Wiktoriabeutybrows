@@ -21,20 +21,12 @@ services:
     startCommand: cd server && node server.js
     healthCheckPath: /
     envVars:
-      - key: DB_HOST
+      - key: DATABASE_URL
         fromDatabase:
           name: wiktoriabeutybrows-db
-          property: host
-      - key: DB_USER
-        fromDatabase:
-          name: wiktoriabeutybrows-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: wiktoriabeutybrows-db
-          property: password
-      - key: DB_NAME
-        value: beauty_salon
+          property: connectionString
+      - key: DB_TYPE
+        value: postgres
       - key: JWT_SECRET
         generateValue: true
       - key: PORT
@@ -42,7 +34,7 @@ services:
       - key: NODE_ENV
         value: production
 
+# Render.com nie obsługuje MySQL w Blueprint, używamy PostgreSQL
 databases:
   - name: wiktoriabeutybrows-db
     plan: free
-    type: mysql
