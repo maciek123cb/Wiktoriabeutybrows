@@ -939,11 +939,30 @@ app.patch('/api/admin/appointments/:id/confirm', verifyToken, async (req, res) =
     }
 
     const { id } = req.params;
+    console.log('Próba potwierdzenia wizyty o ID:', id);
     
-    await db.execute(
-      'UPDATE appointments SET status = "confirmed" WHERE id = ?',
-      [id]
-    );
+    try {
+      if (dbType === 'postgres') {
+        console.log('Używam zapytania PostgreSQL dla potwierdzenia wizyty');
+        await db.execute(
+          "UPDATE appointments SET status = 'confirmed' WHERE id = $1",
+          [id]
+        );
+      } else {
+        console.log('Używam zapytania MySQL dla potwierdzenia wizyty');
+        await db.execute(
+          'UPDATE appointments SET status = "confirmed" WHERE id = ?',
+          [id]
+        );
+      }
+      console.log('Wizyta potwierdzona pomyślnie');
+    } catch (dbError) {
+      console.error('Błąd zapytania do bazy danych:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Błąd potwierdzania wizyty w bazie danych'
+      });
+    }
     
     res.json({
       success: true,
@@ -951,7 +970,10 @@ app.patch('/api/admin/appointments/:id/confirm', verifyToken, async (req, res) =
     });
   } catch (error) {
     console.error('Błąd potwierdzania wizyty:', error);
-    res.status(500).json({ message: 'Błąd serwera' });
+    res.status(500).json({
+      success: false,
+      message: 'Błąd serwera podczas potwierdzania wizyty'
+    });
   }
 });
 
