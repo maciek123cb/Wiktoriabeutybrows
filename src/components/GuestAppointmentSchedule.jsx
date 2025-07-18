@@ -153,13 +153,23 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
 
       <div className="flex space-x-3">
         <button
-          onClick={() => window.location.href = '/login'}
+          onClick={() => {
+            // Zamknij modal rezerwacji
+            window.history.pushState({}, '', '/');
+            // Przekieruj do strony głównej i otwórz modal logowania
+            window.location.href = '/#login';
+          }}
           className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
         >
           Zaloguj się
         </button>
         <button
-          onClick={() => window.location.href = '/register'}
+          onClick={() => {
+            // Zamknij modal rezerwacji
+            window.history.pushState({}, '', '/');
+            // Przekieruj do strony głównej i otwórz modal rejestracji
+            window.location.href = '/#register';
+          }}
           className="flex-1 bg-gray-100 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
         >
           Zarejestruj się

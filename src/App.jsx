@@ -26,7 +26,7 @@ import GuestBookingModal from './components/GuestBookingModal'
 import ClientPanel from './components/ClientPanel'
 
 // Komponent strony głównej
-const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, handleBookingSuccess, showClientPanel, setShowClientPanel, handleCloseClientPanel, showAdminPanel, handleCloseAdminPanel }) => {
+const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, handleBookingSuccess, showClientPanel, setShowClientPanel, handleCloseClientPanel, showAdminPanel, handleCloseAdminPanel, showLoginForm, setShowLoginForm, showRegisterForm, setShowRegisterForm, handleLogin, handleRegisterSuccess }) => {
   const [isScrolled, setIsScrolled] = useState(false)
   const navigate = useNavigate()
 
@@ -43,8 +43,12 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
       <Header 
         isScrolled={isScrolled} 
         user={user}
-        onLoginClick={() => navigate('/login')}
-        onRegisterClick={() => navigate('/register')}
+        onLoginClick={() => {
+          window.location.hash = 'login';
+        }}
+        onRegisterClick={() => {
+          window.location.hash = 'register';
+        }}
         onLogout={() => {
           localStorage.removeItem('authToken')
           localStorage.removeItem('user')
@@ -125,6 +129,75 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
           onClose={handleCloseAdminPanel} 
         />
       )}
+      
+      {/* Modal logowania */}
+      {showLoginForm && !user && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Logowanie</h2>
+            <LoginForm 
+              onLogin={(userData) => {
+                handleLogin(userData);
+                setShowLoginForm(false);
+                window.history.pushState({}, '', '/');
+              }}
+              onBack={() => {
+                setShowLoginForm(false);
+                window.history.pushState({}, '', '/');
+              }}
+              onRegisterClick={() => {
+                setShowLoginForm(false);
+                setShowRegisterForm(true);
+                window.history.pushState({}, '', '/#register');
+              }}
+            />
+            <button
+              onClick={() => {
+                setShowLoginForm(false);
+                window.history.pushState({}, '', '/');
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal rejestracji */}
+      {showRegisterForm && !user && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Rejestracja</h2>
+            <RegisterForm 
+              onRegisterSuccess={(message) => {
+                handleRegisterSuccess(message);
+                setShowRegisterForm(false);
+                setShowLoginForm(true);
+                window.history.pushState({}, '', '/#login');
+              }}
+              onBack={() => {
+                setShowRegisterForm(false);
+                window.history.pushState({}, '', '/');
+              }}
+              onLoginClick={() => {
+                setShowRegisterForm(false);
+                setShowLoginForm(true);
+                window.history.pushState({}, '', '/#login');
+              }}
+            />
+            <button
+              onClick={() => {
+                setShowRegisterForm(false);
+                window.history.pushState({}, '', '/');
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -140,6 +213,8 @@ function App() {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [showClientPanel, setShowClientPanel] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [showRegisterForm, setShowRegisterForm] = useState(false)
   const [message, setMessage] = useState('')
   
   // Zapisujemy referencje do funkcji w zmiennych globalnych
@@ -148,7 +223,7 @@ function App() {
     window.globalSetShowBookingForm = setShowBookingForm;
   }
 
-  // Sprawdź czy użytkownik jest zalogowany przy starcie
+  // Sprawdź czy użytkownik jest zalogowany przy starcie i obsłuż fragmenty URL
   useEffect(() => {
     const token = localStorage.getItem('authToken')
     const savedUser = localStorage.getItem('user')
@@ -159,6 +234,30 @@ function App() {
       // Nie pokazujemy automatycznie panelu admina przy starcie
       // aby uniknąć problemu z automatycznym zamykaniem
     }
+    
+    // Obsługa fragmentów URL
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1);
+      if (hash === 'login') {
+        setShowLoginForm(true);
+        setShowRegisterForm(false);
+        setShowBookingForm(false);
+      } else if (hash === 'register') {
+        setShowRegisterForm(true);
+        setShowLoginForm(false);
+        setShowBookingForm(false);
+      } else {
+        setShowLoginForm(false);
+        setShowRegisterForm(false);
+      }
+    };
+    
+    // Wywołaj przy starcie
+    handleHashChange();
+    
+    // Nasłuchuj zmian fragmentu URL
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [])
 
   const handleLogin = (userData) => {
@@ -233,6 +332,12 @@ function App() {
             handleCloseClientPanel={handleCloseClientPanel}
             showAdminPanel={showAdminPanel}
             handleCloseAdminPanel={handleCloseAdminPanel}
+            showLoginForm={showLoginForm}
+            setShowLoginForm={setShowLoginForm}
+            showRegisterForm={showRegisterForm}
+            setShowRegisterForm={setShowRegisterForm}
+            handleLogin={handleLogin}
+            handleRegisterSuccess={handleRegisterSuccess}
           />
         } />
         <Route path="/services" element={<ServicesPage />} />

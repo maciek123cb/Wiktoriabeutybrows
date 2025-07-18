@@ -133,10 +133,20 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
           </div>
           
           {/* Przycisk zamknięcia */}
-          <div className="mt-6">
+          <div className="mt-6 flex space-x-3">
+            <button
+              onClick={() => {
+                onClose();
+                // Otwórz modal logowania
+                window.location.hash = 'login';
+              }}
+              className="flex-1 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Zaloguj się
+            </button>
             <button
               onClick={onClose}
-              className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Zamknij
             </button>

@@ -95,12 +95,12 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center p-4">
+    <div className="w-full">
       <motion.div
-        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md"
-        initial={{ opacity: 0, y: 50 }}
+        className="bg-white rounded-xl w-full"
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.3 }}
       >
         <div className="text-center mb-8">
           <motion.h1
@@ -193,14 +193,14 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
             <div className="flex space-x-4">
               <button
                 type="button"
-                onClick={() => window.location.href = '/'}
+                onClick={onBack || (() => window.location.href = '/')}
                 className="flex-1 text-gray-600 hover:text-primary transition-colors"
               >
-                Powrót do strony głównej
+                Anuluj
               </button>
               <button
                 type="button"
-                onClick={() => window.location.href = '/register'}
+                onClick={onRegisterClick || (() => window.location.hash = 'register')}
                 className="flex-1 text-primary hover:text-primary/80 transition-colors font-medium"
               >
                 Nie masz konta? Zarejestruj się
