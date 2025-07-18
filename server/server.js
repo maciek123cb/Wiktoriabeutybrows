@@ -15,7 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://wiktoriabeutybrows-frontend.onrender.com', 'https://wiktoriabeutybrows.onrender.com', /\.onrender\.com$/] 
+    ? ['https://wiktoriabeautybrows.onrender.com', /\.onrender\.com$/] 
     : 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
