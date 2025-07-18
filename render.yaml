@@ -7,10 +7,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        fromService:
-          name: wiktoriabeutybrows-backend
-          type: web
-          property: url
+        value: https://wiktoriabeutybrows-backend.onrender.com
     routes:
       - type: rewrite
         source: /*
@@ -22,6 +19,7 @@ services:
     env: node
     buildCommand: cd server && npm install
     startCommand: cd server && node server.js
+    healthCheckPath: /
     envVars:
       - key: DB_HOST
         fromDatabase:
@@ -36,15 +34,15 @@ services:
           name: wiktoriabeutybrows-db
           property: password
       - key: DB_NAME
-        fromDatabase:
-          name: wiktoriabeutybrows-db
-          property: database
+        value: beauty_salon
       - key: JWT_SECRET
         generateValue: true
       - key: PORT
         value: 3001
+      - key: NODE_ENV
+        value: production
 
 databases:
   - name: wiktoriabeutybrows-db
     plan: free
-    ipAllowList: []
+    type: mysql

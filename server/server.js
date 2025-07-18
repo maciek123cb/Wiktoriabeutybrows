@@ -15,12 +15,19 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://wiktoriabeutybrows-frontend.onrender.com', 'https://wiktoriabeutybrows.onrender.com'] 
+    ? [/\.onrender\.com$/, 'https://wiktoriabeutybrows.onrender.com'] 
     : 'http://localhost:3000',
   credentials: true
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Tworzenie katalogu uploads jeśli nie istnieje
+const uploadsDir = path.join(__dirname, 'uploads', 'metamorphoses');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('Utworzono katalog uploads/metamorphoses');
+}
 
 // Dodatkowy endpoint dla health check
 app.get('/', (req, res) => {
@@ -822,20 +829,35 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
 
 // Inicjalizacja i uruchomienie serwera
 async function startServer() {
-  await connectDB();
-  
-  const server = app.listen(PORT, () => {
-    console.log(`Serwer działa na porcie ${PORT}`);
-  });
-  
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`Port ${PORT} jest już zajęty. Zatrzymaj poprzedni serwer lub użyj innego portu.`);
-      process.exit(1);
-    } else {
-      console.error('Błąd serwera:', err);
+  try {
+    // W środowisku produkcyjnym najpierw uruchom skrypt konfiguracyjny bazy danych
+    if (process.env.NODE_ENV === 'production') {
+      const { setupDatabase } = require('./setup-db');
+      const success = await setupDatabase();
+      if (!success) {
+        console.error('Nie udało się skonfigurować bazy danych. Zatrzymuję serwer.');
+        process.exit(1);
+      }
     }
-  });
+    
+    await connectDB();
+    
+    const server = app.listen(PORT, () => {
+      console.log(`Serwer działa na porcie ${PORT}`);
+    });
+    
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} jest już zajęty. Zatrzymaj poprzedni serwer lub użyj innego portu.`);
+        process.exit(1);
+      } else {
+        console.error('Błąd serwera:', err);
+      }
+    });
+  } catch (error) {
+    console.error('Błąd podczas uruchamiania serwera:', error);
+    process.exit(1);
+  }
 }
 
 // ENDPOINTY DLA USŁUG

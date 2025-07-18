@@ -17,6 +17,8 @@ Najłatwiejszym sposobem wdrożenia jest użycie pliku `render.yaml`, który zos
 5. Render automatycznie wykryje plik `render.yaml` i skonfiguruje wszystkie usługi
 6. Kliknij "Apply" aby rozpocząć wdrożenie
 
+**Uwaga:** Po pierwszym wdrożeniu, baza danych zostanie automatycznie zainicjalizowana przez skrypt `setup-db.js`. Jeśli wystąpią problemy, możesz ręcznie uruchomić ten skrypt z panelu Render.com w sekcji "Shell".
+
 ## Wdrożenie ręczne (alternatywnie)
 
 Jeśli wdrożenie za pomocą pliku `render.yaml` nie działa, możesz wdrożyć każdą usługę ręcznie:
