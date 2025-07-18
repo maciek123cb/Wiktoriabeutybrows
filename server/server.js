@@ -390,7 +390,17 @@ app.get('/api/available-dates', async (req, res) => {
     const [slots] = await db.execute(query);
     
     console.log('Raw slots z bazy:', slots);
+    // Upewnij się, że slots jest tablicą
+    if (!Array.isArray(slots)) {
+      console.error('Nieprawidłowy format danych z bazy:', slots);
+      return res.json({ dates: [] });
+    }
+    
     const dates = slots.map(slot => {
+      if (!slot || !slot.date) {
+        console.warn('Nieprawidłowy format slotu:', slot);
+        return null;
+      }
       // Naprawiam problem z przesunięciem daty
       const date = new Date(slot.date);
       // Dodaj 1 dzień aby naprawić przesunięcie strefy czasowej
@@ -399,7 +409,8 @@ app.get('/api/available-dates', async (req, res) => {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
-    });
+    }).filter(date => date !== null); // Filtruj nieprawidłowe daty
+    
     console.log('Sformatowane daty:', dates);
     res.json({ dates });
   } catch (error) {

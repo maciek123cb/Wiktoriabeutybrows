@@ -26,7 +26,13 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
       }
       const data = await response.json()
       console.log('Dostępne daty z serwera:', data.dates)
-      setAvailableDates(data.dates || [])
+      // Upewnij się, że data.dates jest tablicą, jeśli nie, użyj pustej tablicy
+      if (Array.isArray(data.dates)) {
+        setAvailableDates(data.dates)
+      } else {
+        console.warn('Otrzymano nieprawidłowe dane z serwera:', data)
+        setAvailableDates([])
+      }
     } catch (error) {
       console.error('Błąd pobierania dostępnych dat:', error)
       // Ustawienie pustej tablicy w przypadku błędu
