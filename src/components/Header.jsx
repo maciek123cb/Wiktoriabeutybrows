@@ -10,7 +10,7 @@ const Header = ({ isScrolled, user, onLoginClick, onRegisterClick, onLogout, onA
     { href: '/#oferta', label: 'Oferta' },
     { href: '/#rezerwacja', label: 'Rezerwacja' },
     { href: '/#poradnik', label: 'Poradnik' },
-    { href: '/metamorfozy', label: 'Galeria' },
+    { href: '/#metamorfozy', label: 'Galeria' },
     { href: '/#opinie', label: 'Opinie' },
     { href: '/#kontakt', label: 'Kontakt' }
   ]

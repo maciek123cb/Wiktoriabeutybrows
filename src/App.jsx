@@ -24,9 +24,10 @@ import BookingForm from './components/BookingForm'
 import BookingModal from './components/BookingModal'
 import GuestBookingModal from './components/GuestBookingModal'
 import ClientPanel from './components/ClientPanel'
+import MetamorphosisModal from './components/MetamorphosisModal'
 
 // Komponent strony głównej
-const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, handleBookingSuccess, showClientPanel, setShowClientPanel, handleCloseClientPanel, showAdminPanel, handleCloseAdminPanel, showLoginForm, setShowLoginForm, showRegisterForm, setShowRegisterForm, handleLogin, handleRegisterSuccess }) => {
+const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, handleBookingSuccess, showClientPanel, setShowClientPanel, handleCloseClientPanel, showAdminPanel, handleCloseAdminPanel, showLoginForm, setShowLoginForm, showRegisterForm, setShowRegisterForm, showMetamorphosisModal, setShowMetamorphosisModal, handleLogin, handleRegisterSuccess }) => {
   const [isScrolled, setIsScrolled] = useState(false)
   const navigate = useNavigate()
 
@@ -198,6 +199,17 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
           </div>
         </div>
       )}
+      
+      {/* Modal metamorfoz */}
+      {showMetamorphosisModal && (
+        <MetamorphosisModal 
+          isOpen={true}
+          onClose={() => {
+            setShowMetamorphosisModal(false);
+            window.history.pushState({}, '', '/');
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -215,6 +227,7 @@ function App() {
   const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [showLoginForm, setShowLoginForm] = useState(false)
   const [showRegisterForm, setShowRegisterForm] = useState(false)
+  const [showMetamorphosisModal, setShowMetamorphosisModal] = useState(false)
   const [message, setMessage] = useState('')
   
   // Zapisujemy referencje do funkcji w zmiennych globalnych
@@ -242,13 +255,21 @@ function App() {
         setShowLoginForm(true);
         setShowRegisterForm(false);
         setShowBookingForm(false);
+        setShowMetamorphosisModal(false);
       } else if (hash === 'register') {
         setShowRegisterForm(true);
         setShowLoginForm(false);
         setShowBookingForm(false);
+        setShowMetamorphosisModal(false);
+      } else if (hash === 'metamorfozy' || hash === 'galeria') {
+        setShowMetamorphosisModal(true);
+        setShowLoginForm(false);
+        setShowRegisterForm(false);
+        setShowBookingForm(false);
       } else {
         setShowLoginForm(false);
         setShowRegisterForm(false);
+        setShowMetamorphosisModal(false);
       }
     };
     
@@ -336,6 +357,8 @@ function App() {
             setShowLoginForm={setShowLoginForm}
             showRegisterForm={showRegisterForm}
             setShowRegisterForm={setShowRegisterForm}
+            showMetamorphosisModal={showMetamorphosisModal}
+            setShowMetamorphosisModal={setShowMetamorphosisModal}
             handleLogin={handleLogin}
             handleRegisterSuccess={handleRegisterSuccess}
           />

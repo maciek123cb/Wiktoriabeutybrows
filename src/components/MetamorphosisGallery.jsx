@@ -83,12 +83,12 @@ const MetamorphosisGallery = ({ limit = 3 }) => {
         </div>
 
         <div className="text-center mt-12">
-          <Link
-            to="/metamorfozy"
+          <a
+            href="/#metamorfozy"
             className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 transition-colors duration-200"
           >
             Zobacz wszystkie metamorfozy
-          </Link>
+          </a>
         </div>
       </div>
     </section>
