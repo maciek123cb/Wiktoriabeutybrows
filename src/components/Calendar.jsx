@@ -19,9 +19,57 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     }
   }, [propAvailableDates]);
 
-  // Nie potrzebujemy już pobierać dostępnych dat, ponieważ wszystkie przyszłe daty są dostępne
+  useEffect(() => {
+    // Sprawdzamy, czy użytkownik jest zalogowany
+    const token = localStorage.getItem('authToken');
+    
+    // Dla zalogowanych użytkowników pobieramy dostępne daty
+    if (token && !isAdmin && !propAvailableDates?.length) {
+      fetchAvailableDates();
+      // Odświeżaj co 30 sekund
+      const interval = setInterval(fetchAvailableDates, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin, propAvailableDates])
 
-  // Funkcja fetchAvailableDates nie jest już potrzebna, ponieważ wszystkie przyszłe daty są dostępne
+  const fetchAvailableDates = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Pobierz token autoryzacji
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // Dla niezalogowanych użytkowników nie pobieramy dostępnych dat
+        setIsLoading(false);
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/api/available-dates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json().catch(e => ({ dates: [] }));
+      
+      // Zawsze używaj tablicy, nawet jeśli data.dates jest undefined lub null
+      const safeDates = Array.isArray(data.dates) ? data.dates : [];
+      
+      setAvailableDates(safeDates);
+      
+      if (!response.ok) {
+        throw new Error(`Błąd HTTP: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Błąd pobierania dostępnych dat:', error);
+      setError(error.message);
+      // Ustawienie pustej tablicy w przypadku błędu
+      setAvailableDates([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear()
@@ -52,10 +100,24 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     // W trybie admina wszystkie daty są dostępne
     if (isAdmin) return true;
     
+    // Sprawdzamy, czy użytkownik jest zalogowany
+    const token = localStorage.getItem('authToken');
+    
     // Dla niezalogowanych użytkowników wszystkie przyszłe daty są dostępne
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date >= today;
+    if (!token) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return date >= today;
+    }
+    
+    // Dla zalogowanych użytkowników sprawdzamy, czy data jest w tablicy dostępnych dat
+    // Formatuj datę w formacie YYYY-MM-DD
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    
+    return Array.isArray(availableDates) && availableDates.includes(dateStr);
   }
 
   const hasSlots = (date) => {
@@ -98,6 +160,12 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
       newDate.setMonth(prev.getMonth() + direction)
       return newDate
     })
+    
+    // Odśwież dostępne daty po zmianie miesiąca tylko dla zalogowanych użytkowników
+    const token = localStorage.getItem('authToken');
+    if (token && !isAdmin) {
+      setTimeout(() => fetchAvailableDates(), 100);
+    }
   }
 
   const days = getDaysInMonth(currentDate)
@@ -130,7 +198,15 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           >
             <ChevronRight className="w-5 h-5" />
           </button>
-          {/* Przycisk odświeżania nie jest już potrzebny */}
+          {localStorage.getItem('authToken') && !isAdmin && (
+            <button
+              onClick={fetchAvailableDates}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-primary text-lg"
+              title="Odśwież dostępne terminy"
+            >
+              ↻
+            </button>
+          )}
         </div>
       </div>
 
