@@ -187,7 +187,10 @@ function App() {
             onLogin={(userData) => {
               handleLogin(userData)
               if (userData.role === 'admin') {
-                window.location.href = '/admin'
+                // Użyj window.location.replace zamiast window.location.href
+                setTimeout(() => {
+                  window.location.replace('/admin');
+                }, 100);
               } else {
                 window.location.href = '/'
               }
