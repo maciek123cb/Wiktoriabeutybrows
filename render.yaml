@@ -1,7 +1,7 @@
 services:
   # Frontend service
   - type: web
-    name: wiktoriabeautybrows
+    name: wiktoriabeutybrows-frontend
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
