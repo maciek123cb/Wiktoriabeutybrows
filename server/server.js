@@ -1314,6 +1314,24 @@ app.delete('/api/admin/articles/:id', verifyToken, async (req, res) => {
   }
 });
 
+// ENDPOINT DLA INFORMACJI KONTAKTOWYCH
+app.get('/api/contact-info', async (req, res) => {
+  try {
+    // Zwracamy informacje kontaktowe salonu
+    res.json({
+      success: true,
+      contactInfo: {
+        phone: "532-128-227",
+        email: "kontakt@wiktoriabeutybrows.pl",
+        address: "ul. Przykładowa 123, 00-000 Warszawa"
+      }
+    });
+  } catch (error) {
+    console.error('Błąd pobierania informacji kontaktowych:', error);
+    res.status(500).json({ message: 'Błąd serwera' });
+  }
+});
+
 // ENDPOINTY DLA OPINII
 app.get('/api/reviews', async (req, res) => {
   try {
