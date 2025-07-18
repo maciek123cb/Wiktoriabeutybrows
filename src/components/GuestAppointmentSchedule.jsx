@@ -26,7 +26,19 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       // Pobieramy dostępne terminy dla niezalogowanych użytkowników
       const response = await fetch(`${API_URL}/api/available-slots-public/${dateStr}`)
       const data = await response.json()
-      setAvailableSlots(data.slots || [])
+      
+      // Sprawdzamy różne możliwe formaty odpowiedzi
+      let slots = [];
+      if (data.success && Array.isArray(data.slots)) {
+        slots = data.slots;
+      } else if (Array.isArray(data.slots)) {
+        slots = data.slots;
+      } else if (Array.isArray(data)) {
+        slots = data;
+      }
+      
+      console.log(`Dostępne terminy dla ${dateStr}:`, slots);
+      setAvailableSlots(slots);
     } catch (error) {
       console.error('Błąd pobierania dostępnych terminów:', error)
       setAvailableSlots([])
@@ -76,7 +88,7 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
           <div className="flex justify-center py-4">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           </div>
-        ) : availableSlots.length > 0 ? (
+        ) : availableSlots && availableSlots.length > 0 ? (
           <>
             <p className="text-gray-600 mb-2">
               Dostępne terminy:

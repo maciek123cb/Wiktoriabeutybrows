@@ -36,6 +36,13 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
       // Pobierz token autoryzacji
       const token = localStorage.getItem('authToken');
       
+      // Jeśli mamy przekazane daty z props, używamy ich
+      if (propAvailableDates && propAvailableDates.length > 0) {
+        setAvailableDates(propAvailableDates);
+        setIsLoading(false);
+        return;
+      }
+      
       let response;
       
       if (token && !isAdmin) {
@@ -59,6 +66,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
       // Zawsze używaj tablicy, nawet jeśli data.dates jest undefined lub null
       const safeDates = Array.isArray(data.dates) ? data.dates : [];
       
+      console.log('Pobrane dostępne daty:', safeDates);
       setAvailableDates(safeDates);
       
       if (!response.ok) {
@@ -109,18 +117,14 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     const day = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
     
-    // Sprawdzamy, czy użytkownik jest zalogowany
-    const token = localStorage.getItem('authToken');
-    
-    // Dla wszystkich użytkowników (zalogowanych i niezalogowanych) sprawdzamy, czy data jest w tablicy dostępnych dat
-    // Jeśli nie ma dostępnych dat, to sprawdzamy czy data jest w przyszłości
+    // Sprawdzamy, czy data jest w tablicy dostępnych dat
     if (Array.isArray(availableDates) && availableDates.length > 0) {
       return availableDates.includes(dateStr);
     } else {
-      // Jeśli nie ma dostępnych dat, to pokazujemy wszystkie przyszłe daty jako dostępne
+      // Jeśli nie ma dostępnych dat, to pokazujemy tylko dzisiejszą datę jako dostępną
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      return date >= today;
+      return date.toDateString() === today.toDateString();
     }
   }
 
@@ -265,7 +269,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           } else if (isPast) {
             buttonClass += "text-gray-300 cursor-not-allowed "
           } else {
-            buttonClass += "text-gray-400 cursor-not-allowed "
+            buttonClass += "bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer "
           }
 
           return (
@@ -307,8 +311,8 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
               <span className="text-gray-600">Dostępne</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-gray-200 rounded"></div>
-              <span className="text-gray-600">Niedostępne</span>
+              <div className="w-3 h-3 bg-gray-100 rounded"></div>
+              <span className="text-gray-600">Brak terminów</span>
             </div>
           </>
         )}

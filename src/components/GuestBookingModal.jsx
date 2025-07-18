@@ -18,10 +18,15 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
     if (selectedTime) {
       setCurrentTime(selectedTime)
     }
-    
-    // Pobierz dostępne daty przy pierwszym renderowaniu
-    fetchAvailableDates()
   }, [selectedDate, selectedTime])
+  
+  // Pobierz dostępne daty przy pierwszym renderowaniu
+  useEffect(() => {
+    fetchAvailableDates()
+    // Odświeżaj co 30 sekund
+    const interval = setInterval(fetchAvailableDates, 30000)
+    return () => clearInterval(interval)
+  }, [])
   
   // Pobierz dostępne daty z API
   const fetchAvailableDates = async () => {
@@ -29,13 +34,19 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
       // Pobieramy dostępne daty dla niezalogowanych użytkowników
       const response = await fetch(`${API_URL}/api/available-dates-public`)
       const data = await response.json()
+      
+      // Sprawdzamy różne możliwe formaty odpowiedzi
+      let dates = [];
       if (data.success && Array.isArray(data.dates)) {
-        setAvailableDates(data.dates)
+        dates = data.dates;
       } else if (Array.isArray(data.dates)) {
-        setAvailableDates(data.dates)
-      } else {
-        setAvailableDates([])
+        dates = data.dates;
+      } else if (Array.isArray(data)) {
+        dates = data;
       }
+      
+      console.log('GuestBookingModal - pobrane dostępne daty:', dates);
+      setAvailableDates(dates);
     } catch (error) {
       console.error('Błąd pobierania dostępnych dat:', error)
       setAvailableDates([])
@@ -76,7 +87,7 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
               <Calendar 
                 onDateSelect={handleDateSelect}
                 isAdmin={false}
-                availableDates={availableDates}
+                availableDates={availableDates.length > 0 ? availableDates : []}
               />
             </div>
             
