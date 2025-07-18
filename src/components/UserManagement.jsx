@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Users, Check, X, Trash2, Search, UserCheck, UserX } from 'lucide-react'
+import { API_URL } from '../config'
 
 const UserManagement = () => {
   const [users, setUsers] = useState([])
@@ -15,7 +16,7 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/admin/users', {
+      const response = await fetch(`${API_URL}/api/admin/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -35,7 +36,7 @@ const UserManagement = () => {
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/users/${userId}/activate`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/activate`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -59,7 +60,7 @@ const UserManagement = () => {
 
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/users/${userId}`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

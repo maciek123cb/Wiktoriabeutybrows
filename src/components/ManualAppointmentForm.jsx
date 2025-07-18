@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar as CalendarIcon, Clock, User, Mail, Phone, MessageSquare, X, Search } from 'lucide-react'
+import { API_URL } from '../config'
 
 const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlots }) => {
   const [formData, setFormData] = useState({
@@ -40,7 +41,7 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
 
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/users/search?q=${encodeURIComponent(query)}`, {
+      const response = await fetch(`${API_URL}/api/admin/users/search?q=${encodeURIComponent(query)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -110,7 +111,7 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/admin/appointments/manual', {
+      const response = await fetch(`${API_URL}/api/admin/appointments/manual`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Plus, Clock, Trash2, Calendar as CalendarIcon, UserPlus } from 'lucide-react'
 import Calendar from './Calendar'
 import ManualAppointmentForm from './ManualAppointmentForm'
+import { API_URL } from '../config'
 
 const AdminCalendar = () => {
   const [selectedDate, setSelectedDate] = useState(null)
@@ -20,7 +21,7 @@ const AdminCalendar = () => {
 
   const fetchDatesWithSlots = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/available-dates')
+      const response = await fetch(`${API_URL}/api/available-dates`)
       const data = await response.json()
       setDatesWithSlots(data.dates || [])
     } catch (error) {
@@ -40,7 +41,7 @@ const AdminCalendar = () => {
       const dateStr = `${year}-${month}-${day}`
       
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/slots/${dateStr}`, {
+      const response = await fetch(`${API_URL}/api/admin/slots/${dateStr}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -64,7 +65,7 @@ const AdminCalendar = () => {
       const dateStr = `${year}-${month}-${day}`
       console.log('Dodaję slot:', { date: dateStr, time: newTime })
       
-      const response = await fetch('http://localhost:3001/api/admin/slots', {
+      const response = await fetch(`${API_URL}/api/admin/slots`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -101,7 +102,7 @@ const AdminCalendar = () => {
       const day = String(selectedDate.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      const response = await fetch(`http://localhost:3001/api/admin/slots/${dateStr}/${time}`, {
+      const response = await fetch(`${API_URL}/api/admin/slots/${dateStr}/${time}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
