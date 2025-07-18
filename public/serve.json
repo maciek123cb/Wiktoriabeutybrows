@@ -4,23 +4,11 @@
     { "source": "/register", "destination": "/index.html" },
     { "source": "/login", "destination": "/index.html" },
     { "source": "/metamorfozy", "destination": "/index.html" },
-    { "source": "/blog/:path*", "destination": "/index.html" },
+    { "source": "/blog/**", "destination": "/index.html" },
     { "source": "/services", "destination": "/index.html" },
     { "source": "/about", "destination": "/index.html" },
     { "source": "/reviews", "destination": "/index.html" },
     { "source": "/booking", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        { "key": "Cache-Control", "value": "no-cache" }
-      ]
-    }
-  ],
-  "trailingSlash": false
+    { "source": "/**", "destination": "/index.html" }
+  ]
 }

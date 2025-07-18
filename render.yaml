@@ -10,6 +10,33 @@ services:
         value: https://wiktoriabeutybrows-backend.onrender.com
     routes:
       - type: rewrite
+        source: /admin
+        destination: /index.html
+      - type: rewrite
+        source: /register
+        destination: /index.html
+      - type: rewrite
+        source: /login
+        destination: /index.html
+      - type: rewrite
+        source: /metamorfozy
+        destination: /index.html
+      - type: rewrite
+        source: /blog/*
+        destination: /index.html
+      - type: rewrite
+        source: /services
+        destination: /index.html
+      - type: rewrite
+        source: /about
+        destination: /index.html
+      - type: rewrite
+        source: /reviews
+        destination: /index.html
+      - type: rewrite
+        source: /booking
+        destination: /index.html
+      - type: rewrite
         source: /*
         destination: /index.html
     headers:
