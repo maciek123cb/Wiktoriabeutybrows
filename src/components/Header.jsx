@@ -54,7 +54,21 @@ const Header = ({ isScrolled, user, onLoginClick, onRegisterClick, onLogout, onA
                 </span>
                 {user.role === 'admin' ? (
                   <motion.button
-                    onClick={onAdminClick}
+                    onClick={() => {
+                      try {
+                        // Próbujemy użyć przekazanej funkcji onAdminClick
+                        onAdminClick();
+                      } catch (error) {
+                        console.error('Błąd przy próbie otwarcia panelu admina:', error);
+                        // Próbujemy użyć globalnej funkcji jako alternatywy
+                        if (window.globalSetShowAdminPanel) {
+                          window.globalSetShowAdminPanel(true);
+                        } else {
+                          // Jeśli nic nie zadziała, odświeżamy stronę
+                          window.location.href = '/';
+                        }
+                      }
+                    }}
                     className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -142,8 +156,14 @@ const Header = ({ isScrolled, user, onLoginClick, onRegisterClick, onLogout, onA
                   {user.role === 'admin' ? (
                     <button
                       onClick={() => {
-                        onAdminClick()
-                        setIsMenuOpen(false)
+                        try {
+                          onAdminClick();
+                          setIsMenuOpen(false);
+                        } catch (error) {
+                          console.error('Błąd przy próbie otwarcia panelu admina:', error);
+                          // Alternatywne rozwiązanie - odświeżenie strony
+                          window.location.href = '/';
+                        }
                       }}
                       className="flex items-center space-x-2 w-full text-left py-2 text-primary hover:text-primary/80 transition-colors"
                     >

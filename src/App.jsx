@@ -48,7 +48,15 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
           localStorage.removeItem('user')
           window.location.replace('/')
         }}
-        onAdminClick={() => setShowAdminPanel(true)}
+        onAdminClick={() => {
+          try {
+            setShowAdminPanel(true);
+          } catch (error) {
+            console.error('Błąd przy próbie otwarcia panelu admina:', error);
+            // Alternatywne rozwiązanie - odświeżenie strony
+            window.location.href = '/';
+          }
+        }}
         onClientPanelClick={() => setShowClientPanel(true)}
       />
       
@@ -102,12 +110,24 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
   )
 }
 
+// Globalne funkcje do otwierania paneli i formularzy
+if (typeof window !== 'undefined') {
+  window.globalSetShowAdminPanel = null;
+  window.globalSetShowBookingForm = null;
+}
+
 function App() {
   const [user, setUser] = useState(null)
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [showClientPanel, setShowClientPanel] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [message, setMessage] = useState('')
+  
+  // Zapisujemy referencje do funkcji w zmiennych globalnych
+  if (typeof window !== 'undefined') {
+    window.globalSetShowAdminPanel = setShowAdminPanel;
+    window.globalSetShowBookingForm = setShowBookingForm;
+  }
 
   // Sprawdź czy użytkownik jest zalogowany przy starcie
   useEffect(() => {
@@ -136,7 +156,13 @@ function App() {
 
   const handleBookingClick = () => {
     if (user && user.role === 'user') {
-      setShowBookingForm(true)
+      try {
+        setShowBookingForm(true);
+      } catch (error) {
+        console.error('Błąd przy próbie otwarcia formularza rezerwacji:', error);
+        // Alternatywne rozwiązanie - przekierowanie do strony rezerwacji
+        window.location.href = '/booking';
+      }
     } else {
       window.location.href = '/booking'
     }

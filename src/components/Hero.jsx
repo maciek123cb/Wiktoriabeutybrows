@@ -32,7 +32,20 @@ const Hero = ({ onBookAppointment }) => {
         
         <motion.button
           className="btn-primary text-lg"
-          onClick={onBookAppointment}
+          onClick={() => {
+            try {
+              onBookAppointment();
+            } catch (error) {
+              console.error('Błąd przy próbie otwarcia formularza rezerwacji:', error);
+              // Alternatywne rozwiązanie - próba użycia globalnej funkcji
+              if (window.globalSetShowBookingForm) {
+                window.globalSetShowBookingForm(true);
+              } else {
+                // Jeśli nic nie zadziała, przekieruj do strony rezerwacji
+                window.location.href = '/booking';
+              }
+            }
+          }}
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
