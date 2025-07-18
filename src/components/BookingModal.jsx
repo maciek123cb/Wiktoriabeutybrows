@@ -294,13 +294,13 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
               )}
               
               <div className="flex space-x-3">
-                <a
-                  href="/login"
+                <button
+                  onClick={() => window.location.href = '/'}
                   className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
                 >
                   <LogIn className="w-5 h-5" />
                   <span>Zaloguj się</span>
-                </a>
+                </button>
                 <button
                   onClick={onClose}
                   className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"

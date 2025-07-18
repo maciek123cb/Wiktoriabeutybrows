@@ -119,6 +119,27 @@ const BookingPage = () => {
                   </ol>
                 </div>
                 
+                {!localStorage.getItem('authToken') && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      <h3 className="font-semibold text-amber-800">Wymagane logowanie</h3>
+                    </div>
+                    <p className="text-amber-700 text-sm mb-3">
+                      Aby zarezerwować wizytę online, musisz być zalogowany. 
+                      Możesz również umówić się telefonicznie.
+                    </p>
+                    <div className="flex items-center space-x-3 text-sm">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <a href="tel:532-128-227" className="text-amber-800 hover:underline">532-128-227</a>
+                    </div>
+                  </div>
+                )}
+                
                 {selectedDate && (
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
@@ -152,15 +173,20 @@ const BookingPage = () => {
                           Dostępne godziny:
                         </h4>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-                          {availableSlots.map((time) => (
-                            <button
-                              key={time}
-                              onClick={() => handleTimeSelect(time)}
-                              className="p-2 border border-gray-300 rounded-lg hover:bg-primary/10 hover:border-primary transition-colors text-center"
-                            >
-                              {time}
-                            </button>
-                          ))}
+                          {availableSlots.map((time) => {
+                            const isLoggedIn = localStorage.getItem('authToken');
+                            return (
+                              <button
+                                key={time}
+                                onClick={() => handleTimeSelect(time)}
+                                className={`p-2 border rounded-lg text-center ${isLoggedIn 
+                                  ? 'border-gray-300 hover:bg-primary/10 hover:border-primary' 
+                                  : 'border-gray-300 hover:bg-gray-100'}`}
+                              >
+                                {time}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     ) : (
