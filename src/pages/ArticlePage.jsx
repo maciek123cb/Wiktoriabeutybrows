@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Calendar, Tag } from 'lucide-react'
+import { API_URL } from '../config'
 
 const ArticlePage = () => {
   const { slug } = useParams()
@@ -15,7 +16,7 @@ const ArticlePage = () => {
 
   const fetchArticle = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/articles/${slug}`)
+      const response = await fetch(`${API_URL}/api/articles/${slug}`)
       const data = await response.json()
       
       if (response.ok) {

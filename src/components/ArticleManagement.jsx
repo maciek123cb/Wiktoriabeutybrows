@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Plus, Edit, Trash2, Eye, Calendar, Tag } from 'lucide-react'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
+import { API_URL } from '../config'
 
 const ArticleManagement = () => {
   const [articles, setArticles] = useState([])
@@ -25,7 +26,7 @@ const ArticleManagement = () => {
   const fetchArticles = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/admin/articles', {
+      const response = await fetch(`${API_URL}/api/admin/articles`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -43,8 +44,8 @@ const ArticleManagement = () => {
     try {
       const token = localStorage.getItem('authToken')
       const url = editingArticle 
-        ? `http://localhost:3001/api/admin/articles/${editingArticle.id}`
-        : 'http://localhost:3001/api/admin/articles'
+        ? `${API_URL}/api/admin/articles/${editingArticle.id}`
+        : `${API_URL}/api/admin/articles`
       
       const response = await fetch(url, {
         method: editingArticle ? 'PUT' : 'POST',
@@ -72,7 +73,7 @@ const ArticleManagement = () => {
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/articles/${id}`, {
+      const response = await fetch(`${API_URL}/api/admin/articles/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })

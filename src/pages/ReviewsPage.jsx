@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Star, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { API_URL } from '../config'
 
 const ReviewsPage = () => {
   const [reviews, setReviews] = useState([])
@@ -20,7 +21,7 @@ const ReviewsPage = () => {
 
   const fetchReviews = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/reviews')
+      const response = await fetch(`${API_URL}/api/reviews`)
       const data = await response.json()
       setReviews(data.reviews || [])
     } catch (error) {
@@ -35,7 +36,7 @@ const ReviewsPage = () => {
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/reviews', {
+      const response = await fetch(`${API_URL}/api/reviews`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

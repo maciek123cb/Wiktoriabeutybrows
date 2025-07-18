@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, Calendar, Clock, User, Mail, Phone } from 'lucide-react'
+import { API_URL } from '../config'
 
 const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -41,7 +42,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
     setIsLoading(true)
 
     try {
-      const response = await fetch('http://localhost:3001/api/book-appointment', {
+      const response = await fetch(`${API_URL}/api/book-appointment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

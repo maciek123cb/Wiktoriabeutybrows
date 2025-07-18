@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Trash2, Star, Calendar, User } from 'lucide-react'
+import { API_URL } from '../config'
 
 const ReviewManagement = () => {
   const [reviews, setReviews] = useState([])
@@ -13,7 +14,7 @@ const ReviewManagement = () => {
   const fetchReviews = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/admin/reviews', {
+      const response = await fetch(`${API_URL}/api/admin/reviews`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -30,7 +31,7 @@ const ReviewManagement = () => {
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/reviews/${id}`, {
+      const response = await fetch(`${API_URL}/api/admin/reviews/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Edit, Trash2, Clock, DollarSign, Tag } from 'lucide-react'
+import { API_URL } from '../config'
 
 const ServiceManagement = () => {
   const [services, setServices] = useState([])
@@ -23,7 +24,7 @@ const ServiceManagement = () => {
   const fetchServices = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/admin/services', {
+      const response = await fetch(`${API_URL}/api/admin/services`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -41,8 +42,8 @@ const ServiceManagement = () => {
     try {
       const token = localStorage.getItem('authToken')
       const url = editingService 
-        ? `http://localhost:3001/api/admin/services/${editingService.id}`
-        : 'http://localhost:3001/api/admin/services'
+        ? `${API_URL}/api/admin/services/${editingService.id}`
+        : `${API_URL}/api/admin/services`
       
       const response = await fetch(url, {
         method: editingService ? 'PUT' : 'POST',
@@ -70,7 +71,7 @@ const ServiceManagement = () => {
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/services/${id}`, {
+      const response = await fetch(`${API_URL}/api/admin/services/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })

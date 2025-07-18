@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Clock, DollarSign, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { API_URL } from '../config'
 
 const ServicesPage = () => {
   const [services, setServices] = useState([])
@@ -14,7 +15,7 @@ const ServicesPage = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/services')
+      const response = await fetch(`${API_URL}/api/services`)
       const data = await response.json()
       setServices(data.services || [])
     } catch (error) {

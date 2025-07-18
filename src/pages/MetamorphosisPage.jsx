@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactCompareImage from 'react-compare-image';
 import { ArrowLeft } from 'lucide-react';
 import Footer from '../components/Footer';
+import { API_URL } from '../config';
 
 const MetamorphosisPage = () => {
   const [metamorphoses, setMetamorphoses] = useState([]);
@@ -13,7 +14,7 @@ const MetamorphosisPage = () => {
 
   const fetchMetamorphoses = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/metamorphoses');
+      const response = await fetch(`${API_URL}/api/metamorphoses`);
       const data = await response.json();
       setMetamorphoses(data.metamorphoses || []);
     } catch (error) {
@@ -90,8 +91,8 @@ const MetamorphosisPage = () => {
                         
                         <div className="aspect-square mb-4">
                           <ReactCompareImage
-                            leftImage={`http://localhost:3001${metamorphosis.before_image}`}
-                            rightImage={`http://localhost:3001${metamorphosis.after_image}`}
+                            leftImage={`${API_URL}${metamorphosis.before_image}`}
+                            rightImage={`${API_URL}${metamorphosis.after_image}`}
                             leftImageLabel="Przed"
                             rightImageLabel="Po"
                             sliderLineColor="#ec4899"

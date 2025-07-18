@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Calendar, Clock, User, Mail, Phone, Check, X, MessageSquare } from 'lucide-react'
+import { API_URL } from '../config'
 
 const AppointmentSchedule = () => {
   const [appointments, setAppointments] = useState([])
@@ -20,7 +21,7 @@ const AppointmentSchedule = () => {
       if (searchTerm) params.append('search', searchTerm)
       if (dateFilter) params.append('date', dateFilter)
 
-      const response = await fetch(`http://localhost:3001/api/admin/appointments?${params}`, {
+      const response = await fetch(`${API_URL}/api/admin/appointments?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -37,7 +38,7 @@ const AppointmentSchedule = () => {
     setConfirmingId(id)
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/appointments/${id}/confirm`, {
+      const response = await fetch(`${API_URL}/api/admin/appointments/${id}/confirm`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -57,7 +58,7 @@ const AppointmentSchedule = () => {
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/appointments/${id}`, {
+      const response = await fetch(`${API_URL}/api/admin/appointments/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })

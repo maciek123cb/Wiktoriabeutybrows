@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const MetamorphosisManagement = () => {
   const [metamorphoses, setMetamorphoses] = useState([]);
@@ -18,7 +19,7 @@ const MetamorphosisManagement = () => {
   const fetchMetamorphoses = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:3001/api/admin/metamorphoses', {
+      const response = await fetch(`${API_URL}/api/admin/metamorphoses`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -47,8 +48,8 @@ const MetamorphosisManagement = () => {
       }
 
       const url = editingId 
-        ? `http://localhost:3001/api/admin/metamorphoses/${editingId}`
-        : 'http://localhost:3001/api/admin/metamorphoses';
+        ? `${API_URL}/api/admin/metamorphoses/${editingId}`
+        : `${API_URL}/api/admin/metamorphoses`;
       
       const method = editingId ? 'PUT' : 'POST';
 
@@ -94,7 +95,7 @@ const MetamorphosisManagement = () => {
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:3001/api/admin/metamorphoses/${id}`, {
+      const response = await fetch(`${API_URL}/api/admin/metamorphoses/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -192,7 +193,7 @@ const MetamorphosisManagement = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-1">Przed:</p>
                 <img
-                  src={`http://localhost:3001${metamorphosis.before_image}`}
+                  src={`${API_URL}${metamorphosis.before_image}`}
                   alt="Przed"
                   className="w-full h-32 object-cover rounded"
                 />
@@ -200,7 +201,7 @@ const MetamorphosisManagement = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-1">Po:</p>
                 <img
-                  src={`http://localhost:3001${metamorphosis.after_image}`}
+                  src={`${API_URL}${metamorphosis.after_image}`}
                   alt="Po"
                   className="w-full h-32 object-cover rounded"
                 />

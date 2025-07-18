@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Calendar, Tag } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { API_URL } from '../config'
 
 const BlogPage = () => {
   const [articles, setArticles] = useState([])
@@ -15,8 +16,8 @@ const BlogPage = () => {
   const fetchArticles = async () => {
     try {
       const url = selectedCategory === 'all' 
-        ? 'http://localhost:3001/api/articles'
-        : `http://localhost:3001/api/articles?category=${selectedCategory}`
+        ? `${API_URL}/api/articles`
+        : `${API_URL}/api/articles?category=${selectedCategory}`
       
       const response = await fetch(url)
       const data = await response.json()

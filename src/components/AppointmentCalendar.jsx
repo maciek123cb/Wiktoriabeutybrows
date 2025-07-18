@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar as CalendarIcon, Clock, User, Mail, Phone, Check, X, MessageSquare, Plus } from 'lucide-react'
 import Calendar from './Calendar'
+import { API_URL } from '../config'
 
 const AppointmentCalendar = () => {
   const [selectedDate, setSelectedDate] = useState(null)
@@ -28,7 +29,7 @@ const AppointmentCalendar = () => {
   const fetchDatesWithAppointments = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/admin/appointments', {
+      const response = await fetch(`${API_URL}/api/admin/appointments`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -57,7 +58,7 @@ const AppointmentCalendar = () => {
       const day = String(date.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      const response = await fetch(`http://localhost:3001/api/admin/appointments?date=${dateStr}`, {
+      const response = await fetch(`${API_URL}/api/admin/appointments?date=${dateStr}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -83,7 +84,7 @@ const AppointmentCalendar = () => {
       const day = String(date.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      const response = await fetch(`http://localhost:3001/api/available-slots/${dateStr}`)
+      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`)
       const data = await response.json()
       setAvailableSlots(data.slots || [])
     } catch (error) {
@@ -94,7 +95,7 @@ const AppointmentCalendar = () => {
   const confirmAppointment = async (id) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/appointments/${id}/confirm`, {
+      const response = await fetch(`${API_URL}/api/admin/appointments/${id}/confirm`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -113,7 +114,7 @@ const AppointmentCalendar = () => {
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/appointments/${id}`, {
+      const response = await fetch(`${API_URL}/api/admin/appointments/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -141,7 +142,7 @@ const AppointmentCalendar = () => {
       const day = String(selectedDate.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      const response = await fetch('http://localhost:3001/api/admin/appointments/manual', {
+      const response = await fetch(`${API_URL}/api/admin/appointments/manual`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -185,7 +186,7 @@ const AppointmentCalendar = () => {
 
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`http://localhost:3001/api/admin/clients/search?q=${encodeURIComponent(query)}`, {
+      const response = await fetch(`${API_URL}/api/admin/clients/search?q=${encodeURIComponent(query)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()

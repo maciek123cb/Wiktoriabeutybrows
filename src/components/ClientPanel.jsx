@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar, Clock, MessageSquare, CheckCircle, XCircle, AlertCircle, Plus } from 'lucide-react'
+import { API_URL } from '../config'
 
 const ClientPanel = ({ user, onBookAppointment }) => {
   const [appointments, setAppointments] = useState([])
@@ -13,7 +14,7 @@ const ClientPanel = ({ user, onBookAppointment }) => {
   const fetchUserAppointments = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:3001/api/user/appointments', {
+      const response = await fetch(`${API_URL}/api/user/appointments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
