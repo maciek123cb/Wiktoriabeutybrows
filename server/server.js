@@ -432,6 +432,7 @@ app.get('/api/available-dates', async (req, res) => {
   }
 });
 
+// Endpoint dla dostępnych slotów - dostępny dla wszystkich użytkowników
 app.get('/api/available-slots/:date', async (req, res) => {
   try {
     const { date } = req.params;
@@ -444,6 +445,7 @@ app.get('/api/available-slots/:date', async (req, res) => {
     }
     
     try {
+      // Pobieramy wszystkie dostępne sloty dla danej daty
       const [availableSlots] = await db.execute(
         'SELECT time FROM available_slots WHERE date = ? ORDER BY time',
         [date]
@@ -451,6 +453,7 @@ app.get('/api/available-slots/:date', async (req, res) => {
       console.log('Dostępne sloty z bazy (typ):', typeof availableSlots, 'czy tablica:', Array.isArray(availableSlots));
       console.log('Dostępne sloty z bazy (zawartość):', JSON.stringify(availableSlots));
       
+      // Pobieramy wszystkie zarezerwowane sloty dla danej daty
       const [reservedSlots] = await db.execute(
         'SELECT time FROM appointments WHERE date = ? AND status != "cancelled"',
         [date]
@@ -462,7 +465,10 @@ app.get('/api/available-slots/:date', async (req, res) => {
       const safeAvailableSlots = Array.isArray(availableSlots) ? availableSlots : [];
       const safeReservedSlots = Array.isArray(reservedSlots) ? reservedSlots : [];
       
+      // Filtrujemy zarezerwowane sloty
       const reservedTimes = safeReservedSlots.map(slot => slot?.time).filter(Boolean);
+      
+      // Filtrujemy dostępne sloty, usuwając te, które są już zarezerwowane
       const freeSlots = safeAvailableSlots
         .map(slot => slot?.time)
         .filter(Boolean)

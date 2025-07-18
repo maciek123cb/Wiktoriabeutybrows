@@ -31,21 +31,49 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
       const dateStr = `${year}-${month}-${day}`;
       
       console.log('Pobieranie slotów dla daty:', dateStr);
+      console.log('URL zapytania:', `${API_URL}/api/available-slots/${dateStr}`);
       
-      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`);
-      const data = await response.json().catch(e => ({ slots: [] }));
+      // Dodajemy timeout, aby uniknąć problemów z CORS
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 sekund timeout
       
-      console.log('Odpowiedź z serwera dla slotów:', data);
-      console.log('Dostępne sloty (typ):', typeof data.slots, 'czy tablica:', Array.isArray(data.slots));
-      
-      // Zawsze używaj tablicy, nawet jeśli data.slots jest undefined lub null
-      const safeSlots = Array.isArray(data.slots) ? data.slots : [];
-      console.log('Bezpieczne sloty:', safeSlots);
-      
-      setAvailableSlots(safeSlots);
-      
-      if (!response.ok) {
-        throw new Error(`Błąd HTTP: ${response.status}`);
+      try {
+        const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        console.log('Status odpowiedzi:', response.status);
+        console.log('Headers odpowiedzi:', [...response.headers.entries()]);
+        
+        if (!response.ok) {
+          console.error(`Błąd HTTP: ${response.status}`);
+          setAvailableSlots([]);
+          setError(`Błąd serwera: ${response.status}`);
+          return;
+        }
+        
+        const data = await response.json();
+        
+        console.log('Odpowiedź z serwera dla slotów:', data);
+        console.log('Dostępne sloty (typ):', typeof data.slots, 'czy tablica:', Array.isArray(data.slots));
+        
+        // Zawsze używaj tablicy, nawet jeśli data.slots jest undefined lub null
+        const safeSlots = Array.isArray(data.slots) ? data.slots : [];
+        console.log('Bezpieczne sloty:', safeSlots);
+        
+        setAvailableSlots(safeSlots);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error('Timeout przy pobieraniu slotów');
+          setError('Przekroczono czas oczekiwania na odpowiedź serwera');
+        } else {
+          console.error('Błąd fetch:', fetchError);
+          setError('Nie można połączyć się z serwerem');
+        }
+        setAvailableSlots([]);
       }
     } catch (error) {
       console.error('Błąd pobierania slotów:', error);
@@ -162,10 +190,20 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
               {/* Wybór godziny */}
               {selectedDate && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    <Clock className="inline w-4 h-4 mr-2" />
-                    Dostępne godziny
-                  </label>
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      <Clock className="inline w-4 h-4 mr-2" />
+                      Dostępne godziny
+                    </label>
+                    <button 
+                      type="button"
+                      onClick={() => fetchAvailableSlots(selectedDate)}
+                      className="text-primary hover:text-primary/80 p-1"
+                      title="Odśwież dostępne terminy"
+                    >
+                      ↻
+                    </button>
+                  </div>
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
