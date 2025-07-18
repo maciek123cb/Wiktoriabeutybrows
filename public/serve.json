@@ -1,14 +1,1 @@
-{
-  "rewrites": [
-    { "source": "/admin", "destination": "/index.html" },
-    { "source": "/register", "destination": "/index.html" },
-    { "source": "/login", "destination": "/index.html" },
-    { "source": "/metamorfozy", "destination": "/index.html" },
-    { "source": "/blog/**", "destination": "/index.html" },
-    { "source": "/services", "destination": "/index.html" },
-    { "source": "/about", "destination": "/index.html" },
-    { "source": "/reviews", "destination": "/index.html" },
-    { "source": "/booking", "destination": "/index.html" },
-    { "source": "/**", "destination": "/index.html" }
-  ]
-}
+{\n  "rewrites": [\n    { "source": "/admin", "destination": "/index.html" },\n    { "source": "/register", "destination": "/index.html" },\n    { "source": "/login", "destination": "/index.html" },\n    { "source": "/metamorfozy", "destination": "/index.html" },\n    { "source": "/blog/**", "destination": "/index.html" },\n    { "source": "/services", "destination": "/index.html" },\n    { "source": "/about", "destination": "/index.html" },\n    { "source": "/reviews", "destination": "/index.html" },\n    { "source": "/booking", "destination": "/index.html" },\n    { "source": "/**", "destination": "/index.html" }\n  ]\n}
