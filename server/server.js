@@ -34,6 +34,10 @@ app.get('/', (req, res) => {
   res.json({ status: 'API działa poprawnie' });
 });
 
+app.get('./', (req, res) => {
+  res.json({ status: 'API działa poprawnie' });
+});
+
 // Konfiguracja multer dla uploadów
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {

@@ -19,7 +19,7 @@ services:
     env: node
     buildCommand: cd server && npm install
     startCommand: cd server && node server.js
-    healthCheckPath: /
+    healthCheckPath: ./
     envVars:
       - key: DATABASE_URL
         fromDatabase:
