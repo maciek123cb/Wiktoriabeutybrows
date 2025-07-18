@@ -9,7 +9,7 @@ import ArticleManagement from '../components/ArticleManagement'
 import ReviewManagement from '../components/ReviewManagement'
 import MetamorphosisManagement from '../components/MetamorphosisManagement'
 
-const AdminPanel = ({ user, onLogout }) => {
+const AdminPanel = ({ user, onLogout, isModal = false }) => {
   const [adminData, setAdminData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('dashboard')

@@ -18,13 +18,13 @@ import ReviewsPage from './pages/ReviewsPage'
 import MetamorphosisPage from './pages/MetamorphosisPage'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
-import AdminPanel from './pages/AdminPanel'
+import AdminPanelModal from './components/AdminPanelModal'
 import BookingPage from './pages/BookingPage'
 import BookingForm from './components/BookingForm'
 import ClientPanel from './components/ClientPanel'
 
 // Komponent strony głównej
-const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, handleBookingSuccess, showClientPanel, setShowClientPanel, handleCloseClientPanel }) => {
+const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, handleBookingSuccess, showClientPanel, setShowClientPanel, handleCloseClientPanel, showAdminPanel, handleCloseAdminPanel }) => {
   const [isScrolled, setIsScrolled] = useState(false)
   const navigate = useNavigate()
 
@@ -48,7 +48,7 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
           localStorage.removeItem('user')
           window.location.replace('/')
         }}
-        onAdminClick={() => navigate('/admin')}
+        onAdminClick={() => setShowAdminPanel(true)}
         onClientPanelClick={() => setShowClientPanel(true)}
       />
       
@@ -90,6 +90,14 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
           </button>
         </div>
       )}
+      
+      {/* Panel admina */}
+      {showAdminPanel && user && user.role === 'admin' && (
+        <AdminPanelModal 
+          user={user} 
+          onClose={handleCloseAdminPanel} 
+        />
+      )}
     </div>
   )
 }
@@ -98,6 +106,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [showClientPanel, setShowClientPanel] = useState(false)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [message, setMessage] = useState('')
 
   // Sprawdź czy użytkownik jest zalogowany przy starcie
@@ -108,15 +117,18 @@ function App() {
       const userData = JSON.parse(savedUser)
       setUser(userData)
       
-      // Jeśli użytkownik jest adminem i nie jest na stronie /admin, przekieruj go tam
-      if (userData.role === 'admin' && window.location.pathname !== '/admin') {
-        window.location.href = '/admin';
+      // Jeśli użytkownik jest adminem, pokaż panel admina
+      if (userData.role === 'admin') {
+        setShowAdminPanel(true);
       }
     }
   }, [])
 
   const handleLogin = (userData) => {
     setUser(userData)
+    if (userData.role === 'admin') {
+      setShowAdminPanel(true)
+    }
   }
 
   const handleRegisterSuccess = (successMessage) => {
@@ -151,6 +163,10 @@ function App() {
     setShowClientPanel(false)
   }
 
+  const handleCloseAdminPanel = () => {
+    setShowAdminPanel(false)
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
@@ -179,6 +195,8 @@ function App() {
             showClientPanel={showClientPanel}
             setShowClientPanel={setShowClientPanel}
             handleCloseClientPanel={handleCloseClientPanel}
+            showAdminPanel={showAdminPanel}
+            handleCloseAdminPanel={handleCloseAdminPanel}
           />
         } />
         <Route path="/services" element={<ServicesPage />} />
@@ -189,19 +207,13 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/booking" element={<BookingPage />} />
         <Route path="/login" element={
-          user && user.role === 'admin' ? (
-            <Navigate to="/admin" replace />
-          ) : user ? (
+          user ? (
             <Navigate to="/" replace />
           ) : (
             <LoginForm 
               onLogin={(userData) => {
                 handleLogin(userData)
-                if (userData.role === 'admin') {
-                  window.location.href = '/admin';
-                } else {
-                  window.location.href = '/'
-                }
+                window.location.href = '/'
               }}
               onRegisterSuccess={handleRegisterSuccess}
             />
@@ -211,13 +223,6 @@ function App() {
           <RegisterForm 
             onRegisterSuccess={handleRegisterSuccess}
           />
-        } />
-        <Route path="/admin" element={
-          user && user.role === 'admin' ? (
-            <AdminPanel user={user} onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
         } />
       </Routes>
     </Router>
