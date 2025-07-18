@@ -457,10 +457,33 @@ app.get('/api/available-slots/:date', async (req, res) => {
       console.log('Sprawdzam sloty dla daty:', date);
       
       // Najpierw sprawdź, czy data istnieje w tabeli available_slots
-      const [dateCheck] = await db.execute(
-        'SELECT COUNT(*) as count FROM available_slots WHERE date = ?',
-        [date]
-      );
+      // Dodajemy szczegółowe logowanie
+      console.log('Sprawdzam datę w bazie:', date, 'typ bazy:', dbType);
+      
+      let dateCheck;
+      try {
+        if (dbType === 'postgres') {
+          // W PostgreSQL może być potrzebna konwersja formatu daty
+          console.log('Używam zapytania PostgreSQL dla sprawdzenia daty');
+          const [result] = await db.execute(
+            "SELECT COUNT(*) as count FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1",
+            [date]
+          );
+          dateCheck = result;
+        } else {
+          // MySQL
+          console.log('Używam zapytania MySQL dla sprawdzenia daty');
+          const [result] = await db.execute(
+            'SELECT COUNT(*) as count FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ?',
+            [date]
+          );
+          dateCheck = result;
+        }
+        console.log('Wynik sprawdzenia daty (raw):', dateCheck);
+      } catch (dbError) {
+        console.error('Błąd zapytania o sprawdzenie daty:', dbError);
+        dateCheck = [{ count: 0 }];
+      }
       
       console.log('Wynik sprawdzenia daty:', dateCheck);
       
@@ -470,19 +493,59 @@ app.get('/api/available-slots/:date', async (req, res) => {
       }
       
       // Jeśli data istnieje, pobierz dostępne sloty
-      const [availableSlots] = await db.execute(
-        'SELECT time FROM available_slots WHERE date = ? ORDER BY time',
-        [date]
-      );
+      let availableSlots;
+      try {
+        if (dbType === 'postgres') {
+          // W PostgreSQL może być potrzebna konwersja formatu daty
+          console.log('Używam zapytania PostgreSQL dla daty:', date);
+          const [result] = await db.execute(
+            "SELECT time FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 ORDER BY time",
+            [date]
+          );
+          availableSlots = result;
+        } else {
+          // MySQL
+          console.log('Używam zapytania MySQL dla daty:', date);
+          const [result] = await db.execute(
+            'SELECT time FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? ORDER BY time',
+            [date]
+          );
+          availableSlots = result;
+        }
+        console.log('Pobrano dostępne sloty:', availableSlots);
+      } catch (dbError) {
+        console.error('Błąd zapytania o dostępne sloty:', dbError);
+        availableSlots = [];
+      }
       
       console.log('Dostępne sloty z bazy (typ):', typeof availableSlots, 'czy tablica:', Array.isArray(availableSlots));
       console.log('Dostępne sloty z bazy (zawartość):', JSON.stringify(availableSlots));
       
       // Pobieramy wszystkie zarezerwowane sloty dla danej daty
-      const [reservedSlots] = await db.execute(
-        'SELECT time FROM appointments WHERE date = ? AND status != "cancelled"',
-        [date]
-      );
+      let reservedSlots;
+      try {
+        if (dbType === 'postgres') {
+          // W PostgreSQL może być potrzebna konwersja formatu daty
+          console.log('Używam zapytania PostgreSQL dla zarezerwowanych slotów, data:', date);
+          const [result] = await db.execute(
+            "SELECT time FROM appointments WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND status != 'cancelled'",
+            [date]
+          );
+          reservedSlots = result;
+        } else {
+          // MySQL
+          console.log('Używam zapytania MySQL dla zarezerwowanych slotów, data:', date);
+          const [result] = await db.execute(
+            'SELECT time FROM appointments WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND status != "cancelled"',
+            [date]
+          );
+          reservedSlots = result;
+        }
+        console.log('Pobrano zarezerwowane sloty:', reservedSlots);
+      } catch (dbError) {
+        console.error('Błąd zapytania o zarezerwowane sloty:', dbError);
+        reservedSlots = [];
+      }
       console.log('Zarezerwowane sloty (typ):', typeof reservedSlots, 'czy tablica:', Array.isArray(reservedSlots));
       console.log('Zarezerwowane sloty (zawartość):', JSON.stringify(reservedSlots));
       
@@ -663,11 +726,50 @@ app.post('/api/admin/slots', verifyToken, async (req, res) => {
     const { date, time } = req.body;
     console.log('Dodawanie slotu - otrzymane dane:', { date, time });
     
-    await db.execute(
-      'INSERT IGNORE INTO available_slots (date, time) VALUES (?, ?)',
-      [date, time]
-    );
+    // Sprawdzamy, czy slot już istnieje
+    let slotExists;
+    if (dbType === 'postgres') {
+      const [result] = await db.execute(
+        "SELECT COUNT(*) as count FROM available_slots WHERE date::text = $1 AND time = $2",
+        [date, time]
+      );
+      slotExists = result[0]?.count > 0;
+    } else {
+      const [result] = await db.execute(
+        'SELECT COUNT(*) as count FROM available_slots WHERE date = ? AND time = ?',
+        [date, time]
+      );
+      slotExists = result[0]?.count > 0;
+    }
     
+    if (slotExists) {
+      console.log('Slot już istnieje:', { date, time });
+      return res.json({ success: true, message: 'Slot już istnieje' });
+    }
+    
+    // Dodajemy nowy slot
+    try {
+      if (dbType === 'postgres') {
+        console.log('Dodaję slot w PostgreSQL:', { date, time });
+        // W PostgreSQL możemy potrzebować konwersji formatu daty
+        await db.execute(
+          "INSERT INTO available_slots (date, time) VALUES (TO_DATE($1, 'YYYY-MM-DD'), $2)",
+          [date, time]
+        );
+      } else {
+        console.log('Dodaję slot w MySQL:', { date, time });
+        await db.execute(
+          'INSERT IGNORE INTO available_slots (date, time) VALUES (?, ?)',
+          [date, time]
+        );
+      }
+      console.log('Slot dodany pomyślnie');
+    } catch (dbError) {
+      console.error('Błąd dodawania slotu do bazy:', dbError);
+      throw dbError; // Przekazujemy błąd dalej, aby został obsłużony przez główny blok try-catch
+    }
+    
+    console.log('Slot dodany pomyślnie:', { date, time });
     res.json({ success: true });
   } catch (error) {
     console.error('Błąd dodawania slotu:', error);

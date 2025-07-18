@@ -49,11 +49,17 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
         // Pobierz token autoryzacji, jeśli użytkownik jest zalogowany
         const token = localStorage.getItem('authToken');
         
+        console.log('Wysyłam zapytanie o dostępne sloty dla daty:', dateStr);
+        console.log('Token autoryzacji:', token ? 'Dostępny' : 'Brak');
+        
         const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`, {
           signal: controller.signal,
           headers: token ? {
-            'Authorization': `Bearer ${token}`
-          } : {}
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } : {
+            'Content-Type': 'application/json'
+          }
         });
         
         clearTimeout(timeoutId);
@@ -101,6 +107,14 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
   // Obsługa wyboru daty
   const handleDateSelect = (date) => {
     console.log('Wybrano datę:', date);
+    
+    // Formatuj datę w formacie YYYY-MM-DD dla logowania
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    console.log('Sformatowana data:', dateStr);
+    
     setSelectedDate(date);
     setSelectedTime('');
     fetchAvailableSlots(date);
