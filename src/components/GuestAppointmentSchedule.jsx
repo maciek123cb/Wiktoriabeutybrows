@@ -65,22 +65,22 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="bg-white rounded-lg p-4 border border-gray-200">
         <h3 className="font-semibold text-lg text-gray-800 mb-2">
           {formatDate(selectedDate)}
         </h3>
         
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           </div>
         ) : availableSlots.length > 0 ? (
           <>
-            <p className="text-gray-600 mb-4">
-              Dostępne terminy na wybrany dzień:
+            <p className="text-gray-600 mb-2">
+              Dostępne terminy:
             </p>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-2">
               {availableSlots.map((slot) => (
                 <div
                   key={slot}
@@ -93,7 +93,7 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
             </div>
           </>
         ) : (
-          <p className="text-gray-500 py-4 text-center">
+          <p className="text-gray-500 py-2 text-center">
             Brak dostępnych terminów na wybrany dzień
           </p>
         )}
@@ -101,13 +101,12 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-800 mb-2">Rezerwacja telefoniczna</h3>
-        <p className="text-blue-700 mb-4">
+        <p className="text-blue-700 mb-2">
           Aby zarezerwować wizytę, prosimy o kontakt telefoniczny.
-          Możesz również utworzyć konto, aby rezerwować wizyty online.
         </p>
         
         {contactInfo && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center space-x-3">
               <Phone className="w-5 h-5 text-primary" />
               <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline">

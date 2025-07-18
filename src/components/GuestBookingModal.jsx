@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, Calendar, Clock, Phone, Mail } from 'lucide-react'
+import { X, Calendar as CalendarIcon, Clock } from 'lucide-react'
 import { API_URL } from '../config'
 import GuestAppointmentSchedule from './GuestAppointmentSchedule'
+import Calendar from './Calendar'
 
 const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate))
   const [currentTime, setCurrentTime] = useState(selectedTime)
+  const [availableDates, setAvailableDates] = useState([])
 
   // Aktualizuj datę i czas, gdy zmienią się propsy
   useEffect(() => {
@@ -17,20 +19,25 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
       setCurrentTime(selectedTime)
     }
   }, [selectedDate, selectedTime])
+  
+  // Funkcja obsługująca wybór daty z kalendarza
+  const handleDateSelect = (date) => {
+    setCurrentDate(date)
+  }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <motion.div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-800">Podgląd terminarza</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Terminarz wizyt</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -41,11 +48,23 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
 
         {/* Content */}
         <div className="p-6">
-          {/* Komponent z terminarzem i informacjami dla niezalogowanych */}
-          <GuestAppointmentSchedule 
-            selectedDate={currentDate} 
-            selectedTime={currentTime} 
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Kalendarz */}
+            <div>
+              <Calendar 
+                onDateSelect={handleDateSelect}
+                isAdmin={false}
+              />
+            </div>
+            
+            {/* Dostępne terminy i informacje */}
+            <div>
+              <GuestAppointmentSchedule 
+                selectedDate={currentDate} 
+                selectedTime={currentTime} 
+              />
+            </div>
+          </div>
           
           {/* Przycisk zamknięcia */}
           <div className="mt-6">
