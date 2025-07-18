@@ -23,7 +23,8 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       const day = String(date.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`)
+      // Pobieramy dostępne terminy dla niezalogowanych użytkowników
+      const response = await fetch(`${API_URL}/api/available-slots-public/${dateStr}`)
       const data = await response.json()
       setAvailableSlots(data.slots || [])
     } catch (error) {

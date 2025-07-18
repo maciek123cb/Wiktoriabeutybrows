@@ -18,7 +18,29 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
     if (selectedTime) {
       setCurrentTime(selectedTime)
     }
+    
+    // Pobierz dostępne daty przy pierwszym renderowaniu
+    fetchAvailableDates()
   }, [selectedDate, selectedTime])
+  
+  // Pobierz dostępne daty z API
+  const fetchAvailableDates = async () => {
+    try {
+      // Pobieramy dostępne daty dla niezalogowanych użytkowników
+      const response = await fetch(`${API_URL}/api/available-dates-public`)
+      const data = await response.json()
+      if (data.success && Array.isArray(data.dates)) {
+        setAvailableDates(data.dates)
+      } else if (Array.isArray(data.dates)) {
+        setAvailableDates(data.dates)
+      } else {
+        setAvailableDates([])
+      }
+    } catch (error) {
+      console.error('Błąd pobierania dostępnych dat:', error)
+      setAvailableDates([])
+    }
+  }
   
   // Funkcja obsługująca wybór daty z kalendarza
   const handleDateSelect = (date) => {
@@ -54,6 +76,7 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
               <Calendar 
                 onDateSelect={handleDateSelect}
                 isAdmin={false}
+                availableDates={availableDates}
               />
             </div>
             
