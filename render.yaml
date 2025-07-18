@@ -1,0 +1,50 @@
+services:
+  # Frontend service
+  - type: web
+    name: wiktoriabeutybrows-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: wiktoriabeutybrows-backend
+          type: web
+          property: url
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # Backend service
+  - type: web
+    name: wiktoriabeutybrows-backend
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && node server.js
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: wiktoriabeutybrows-db
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: wiktoriabeutybrows-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: wiktoriabeutybrows-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: wiktoriabeutybrows-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 3001
+
+databases:
+  - name: wiktoriabeutybrows-db
+    plan: free
+    ipAllowList: []
