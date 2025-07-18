@@ -3,21 +3,28 @@ import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
 import { API_URL } from '../config'
 
-const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
+const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availableDates: propAvailableDates }) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [availableDates, setAvailableDates] = useState([])
   const [selectedDate, setSelectedDate] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  // Użyj dat przekazanych jako prop, jeśli są dostępne
   useEffect(() => {
-    if (!isAdmin) {
+    if (propAvailableDates && propAvailableDates.length > 0) {
+      setAvailableDates(propAvailableDates);
+    }
+  }, [propAvailableDates]);
+
+  useEffect(() => {
+    if (!isAdmin && !propAvailableDates) {
       fetchAvailableDates()
       // Odświeżaj co 30 sekund
       const interval = setInterval(fetchAvailableDates, 30000)
       return () => clearInterval(interval)
     }
-  }, [isAdmin])
+  }, [isAdmin, propAvailableDates])
 
   const fetchAvailableDates = async () => {
     setIsLoading(true);
@@ -151,8 +158,8 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
       newDate.setMonth(prev.getMonth() + direction)
       return newDate
     })
-    // Odśwież dostępne daty po zmianie miesiąca
-    if (!isAdmin) {
+    // Odśwież dostępne daty po zmianie miesiąca tylko jeśli nie są przekazane jako prop
+    if (!isAdmin && !propAvailableDates) {
       setTimeout(() => fetchAvailableDates(), 100)
     }
   }
@@ -187,7 +194,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
           >
             <ChevronRight className="w-5 h-5" />
           </button>
-          {!isAdmin && (
+          {!isAdmin && !propAvailableDates && (
             <button
               onClick={fetchAvailableDates}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-primary text-lg"

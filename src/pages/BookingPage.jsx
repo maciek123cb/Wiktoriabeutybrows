@@ -12,8 +12,25 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [availableSlots, setAvailableSlots] = useState([])
+  const [availableDates, setAvailableDates] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  
+  // Pobierz dostępne daty przy ładowaniu strony
+  useEffect(() => {
+    fetchAvailableDates()
+  }, [])
+  
+  // Pobierz dostępne daty
+  const fetchAvailableDates = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/available-dates`)
+      const data = await response.json()
+      setAvailableDates(Array.isArray(data.dates) ? data.dates : [])
+    } catch (error) {
+      console.error('Błąd pobierania dostępnych dat:', error)
+    }
+  }
   
   // Pobierz dostępne sloty dla wybranej daty
   const fetchAvailableSlots = async (date) => {
@@ -91,7 +108,11 @@ const BookingPage = () => {
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Kalendarz */}
               <div>
-                <Calendar onDateSelect={handleDateSelect} isAdmin={false} />
+                <Calendar 
+                  onDateSelect={handleDateSelect} 
+                  isAdmin={false} 
+                  availableDates={availableDates}
+                />
               </div>
               
               {/* Dostępne terminy */}
