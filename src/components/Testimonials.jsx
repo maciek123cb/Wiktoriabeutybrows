@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Star, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { API_URL } from '../config'
 
 const Testimonials = ({ user }) => {
   const [reviews, setReviews] = useState([])
@@ -13,7 +14,7 @@ const Testimonials = ({ user }) => {
 
   const fetchReviews = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/reviews?limit=3')
+      const response = await fetch(`${API_URL}/api/reviews?limit=3`)
       const data = await response.json()
       setReviews(data.reviews || [])
     } catch (error) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactCompareImage from 'react-compare-image';
 import { Link } from 'react-router-dom';
+import { API_URL } from '../config';
 
 const MetamorphosisGallery = ({ limit = 3 }) => {
   const [metamorphoses, setMetamorphoses] = useState([]);
@@ -12,7 +13,7 @@ const MetamorphosisGallery = ({ limit = 3 }) => {
 
   const fetchMetamorphoses = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/metamorphoses?limit=${limit}`);
+      const response = await fetch(`${API_URL}/api/metamorphoses?limit=${limit}`);
       const data = await response.json();
       setMetamorphoses(data.metamorphoses || []);
     } catch (error) {
@@ -61,8 +62,8 @@ const MetamorphosisGallery = ({ limit = 3 }) => {
                 
                 <div className="aspect-square mb-4">
                   <ReactCompareImage
-                    leftImage={`http://localhost:3001${metamorphosis.before_image}`}
-                    rightImage={`http://localhost:3001${metamorphosis.after_image}`}
+                    leftImage={`${API_URL}${metamorphosis.before_image}`}
+                    rightImage={`${API_URL}${metamorphosis.after_image}`}
                     leftImageLabel="Przed"
                     rightImageLabel="Po"
                     sliderLineColor="#ec4899"

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { API_URL } from '../config'
 
 const Blog = () => {
   const [articles, setArticles] = useState([])
@@ -13,7 +14,7 @@ const Blog = () => {
 
   const fetchLatestArticles = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/articles?limit=3')
+      const response = await fetch(`${API_URL}/api/articles?limit=3`)
       const data = await response.json()
       console.log('Pobrane artykuły:', data)
       setArticles(data.articles || [])

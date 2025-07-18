@@ -17,5 +17,16 @@ export default defineConfig({
   },
   define: {
     'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL)
-  }
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: './index.html'
+      }
+    }
+  },
+  publicDir: 'public'
 })
