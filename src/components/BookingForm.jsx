@@ -25,10 +25,18 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
       setError('');
       
       // Formatuj datę w formacie YYYY-MM-DD
+      if (!(date instanceof Date) || isNaN(date.getTime())) {
+        console.error('Nieprawidłowa data:', date);
+        setError('Nieprawidłowa data');
+        setAvailableSlots([]);
+        return;
+      }
+      
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
+      console.log('Sformatowana data:', dateStr);
       
       console.log('Pobieranie slotów dla daty:', dateStr);
       console.log('URL zapytania:', `${API_URL}/api/available-slots/${dateStr}`);
@@ -38,8 +46,14 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 sekund timeout
       
       try {
+        // Pobierz token autoryzacji, jeśli użytkownik jest zalogowany
+        const token = localStorage.getItem('authToken');
+        
         const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`, {
-          signal: controller.signal
+          signal: controller.signal,
+          headers: token ? {
+            'Authorization': `Bearer ${token}`
+          } : {}
         });
         
         clearTimeout(timeoutId);
@@ -86,9 +100,10 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
 
   // Obsługa wyboru daty
   const handleDateSelect = (date) => {
-    setSelectedDate(date)
-    setSelectedTime('')
-    fetchAvailableSlots(date)
+    console.log('Wybrano datę:', date);
+    setSelectedDate(date);
+    setSelectedTime('');
+    fetchAvailableSlots(date);
   }
 
   // Obsługa wysyłania formularza
@@ -227,9 +242,17 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-center py-8">
-                      Brak dostępnych terminów w wybranym dniu
-                    </p>
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-4">
+                        Brak dostępnych terminów w wybranym dniu
+                      </p>
+                      <button 
+                        onClick={() => fetchAvailableSlots(selectedDate)}
+                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                      >
+                        Odśwież terminy
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

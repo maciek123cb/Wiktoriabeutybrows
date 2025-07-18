@@ -384,6 +384,10 @@ app.get('/api/available-dates', async (req, res) => {
     console.log('Rozpoczynam pobieranie dostępnych dat');
     console.log('Typ bazy danych:', dbType);
     
+    // Sprawdź, czy w ogóle istnieją jakieś sloty w bazie
+    const [slotsCheck] = await db.execute('SELECT COUNT(*) as count FROM available_slots');
+    console.log('Liczba slotów w bazie:', slotsCheck[0]?.count || 0);
+    
     let query;
     if (dbType === 'postgres') {
       query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURRENT_DATE ORDER BY date';
@@ -437,6 +441,7 @@ app.get('/api/available-slots/:date', async (req, res) => {
   try {
     const { date } = req.params;
     console.log('Pobieranie slotów dla daty:', date);
+    console.log('Headers zapytania:', req.headers);
     
     // Sprawdzamy format daty
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -444,12 +449,32 @@ app.get('/api/available-slots/:date', async (req, res) => {
       return res.json({ slots: [] }); // Zwracamy pustą tablicę zamiast błędu
     }
     
+    console.log('Format daty poprawny:', date);
+    
     try {
       // Pobieramy wszystkie dostępne sloty dla danej daty
+      // Sprawdzamy, czy istnieją sloty dla danej daty
+      console.log('Sprawdzam sloty dla daty:', date);
+      
+      // Najpierw sprawdź, czy data istnieje w tabeli available_slots
+      const [dateCheck] = await db.execute(
+        'SELECT COUNT(*) as count FROM available_slots WHERE date = ?',
+        [date]
+      );
+      
+      console.log('Wynik sprawdzenia daty:', dateCheck);
+      
+      if (!dateCheck || !dateCheck[0] || dateCheck[0].count === 0) {
+        console.log('Brak slotów dla daty:', date);
+        return res.json({ slots: [] });
+      }
+      
+      // Jeśli data istnieje, pobierz dostępne sloty
       const [availableSlots] = await db.execute(
         'SELECT time FROM available_slots WHERE date = ? ORDER BY time',
         [date]
       );
+      
       console.log('Dostępne sloty z bazy (typ):', typeof availableSlots, 'czy tablica:', Array.isArray(availableSlots));
       console.log('Dostępne sloty z bazy (zawartość):', JSON.stringify(availableSlots));
       

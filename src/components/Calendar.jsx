@@ -24,7 +24,15 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
     setError(null);
     try {
       console.log('Pobieranie dostępnych dat z:', `${API_URL}/api/available-dates`);
-      const response = await fetch(`${API_URL}/api/available-dates`)
+      
+      // Pobierz token autoryzacji, jeśli użytkownik jest zalogowany
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch(`${API_URL}/api/available-dates`, {
+        headers: token ? {
+          'Authorization': `Bearer ${token}`
+        } : {}
+      })
       
       // Nawet jeśli response nie jest ok, próbujemy odczytać JSON
       const data = await response.json().catch(e => ({ dates: [] }));
