@@ -14,19 +14,45 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
 
   // Pobierz dostępne sloty dla wybranej daty
   const fetchAvailableSlots = async (date) => {
+    if (!date) {
+      console.warn('Próba pobrania slotów bez podania daty');
+      setAvailableSlots([]);
+      return;
+    }
+    
     try {
-      // Naprawiam problem z przesunięciem daty
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      const dateStr = `${year}-${month}-${day}`
+      setLoading(true);
+      setError('');
       
-      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`)
-      const data = await response.json()
-      setAvailableSlots(data.slots)
+      // Naprawiam problem z przesunięciem daty
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      console.log('Pobieranie slotów dla daty:', dateStr);
+      
+      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`);
+      const data = await response.json().catch(e => ({ slots: [] }));
+      
+      console.log('Odpowiedź z serwera dla slotów:', data);
+      console.log('Dostępne sloty (typ):', typeof data.slots, 'czy tablica:', Array.isArray(data.slots));
+      
+      // Zawsze używaj tablicy, nawet jeśli data.slots jest undefined lub null
+      const safeSlots = Array.isArray(data.slots) ? data.slots : [];
+      console.log('Bezpieczne sloty:', safeSlots);
+      
+      setAvailableSlots(safeSlots);
+      
+      if (!response.ok) {
+        throw new Error(`Błąd HTTP: ${response.status}`);
+      }
     } catch (error) {
-      console.error('Błąd pobierania slotów:', error)
-      setAvailableSlots([])
+      console.error('Błąd pobierania slotów:', error);
+      setError('Nie można pobrać dostępnych terminów. Spróbuj ponownie później.');
+      setAvailableSlots([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -140,11 +166,15 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
                     <Clock className="inline w-4 h-4 mr-2" />
                     Dostępne godziny
                   </label>
-                  {availableSlots.length > 0 ? (
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : Array.isArray(availableSlots) && availableSlots.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
-                      {availableSlots.map(time => (
+                      {availableSlots.map((time, index) => (
                         <motion.button
-                          key={time}
+                          key={time || index}
                           onClick={() => setSelectedTime(time)}
                           className={`p-3 rounded-lg border transition-colors ${
                             selectedTime === time

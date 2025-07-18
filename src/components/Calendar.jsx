@@ -7,6 +7,8 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [availableDates, setAvailableDates] = useState([])
   const [selectedDate, setSelectedDate] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!isAdmin) {
@@ -18,25 +20,34 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
   }, [isAdmin])
 
   const fetchAvailableDates = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       console.log('Pobieranie dostępnych dat z:', `${API_URL}/api/available-dates`);
       const response = await fetch(`${API_URL}/api/available-dates`)
+      
+      // Nawet jeśli response nie jest ok, próbujemy odczytać JSON
+      const data = await response.json().catch(e => ({ dates: [] }));
+      
+      console.log('Odpowiedź z serwera:', data);
+      console.log('Dostępne daty z serwera (typ):', typeof data.dates, 'czy tablica:', Array.isArray(data.dates));
+      
+      // Zawsze używaj tablicy, nawet jeśli data.dates jest undefined lub null
+      const safeDates = Array.isArray(data.dates) ? data.dates : [];
+      console.log('Bezpieczne daty:', safeDates);
+      
+      setAvailableDates(safeDates);
+      
       if (!response.ok) {
         throw new Error(`Błąd HTTP: ${response.status}`);
       }
-      const data = await response.json()
-      console.log('Dostępne daty z serwera:', data.dates)
-      // Upewnij się, że data.dates jest tablicą, jeśli nie, użyj pustej tablicy
-      if (Array.isArray(data.dates)) {
-        setAvailableDates(data.dates)
-      } else {
-        console.warn('Otrzymano nieprawidłowe dane z serwera:', data)
-        setAvailableDates([])
-      }
     } catch (error) {
-      console.error('Błąd pobierania dostępnych dat:', error)
+      console.error('Błąd pobierania dostępnych dat:', error);
+      setError(error.message);
       // Ustawienie pustej tablicy w przypadku błędu
-      setAvailableDates([])
+      setAvailableDates([]);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -65,11 +76,19 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
 
   const isDateAvailable = (date) => {
     if (!date) return false
+    
+    // Zabezpieczenie przed błędem, jeśli availableDates nie jest tablicą
+    if (!Array.isArray(availableDates)) {
+      console.warn('availableDates nie jest tablicą:', availableDates);
+      return false;
+    }
+    
     // Naprawiam problem z przesunięciem daty
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
+    
     const isAvailable = availableDates.includes(dateStr)
     // Ograniczamy logowanie, aby nie zaśmiecać konsoli
     if (isAvailable) {
@@ -80,6 +99,13 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
 
   const hasSlots = (date) => {
     if (!date || !isAdmin) return false
+    
+    // Zabezpieczenie przed błędem, jeśli datesWithSlots nie jest tablicą
+    if (!Array.isArray(datesWithSlots)) {
+      console.warn('datesWithSlots nie jest tablicą:', datesWithSlots);
+      return false;
+    }
+    
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')

@@ -380,6 +380,10 @@ app.post('/api/book-appointment', verifyToken, async (req, res) => {
 // API dla dostępnych terminów
 app.get('/api/available-dates', async (req, res) => {
   try {
+    // Dodajemy szczegółowe logowanie
+    console.log('Rozpoczynam pobieranie dostępnych dat');
+    console.log('Typ bazy danych:', dbType);
+    
     let query;
     if (dbType === 'postgres') {
       query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURRENT_DATE ORDER BY date';
@@ -387,35 +391,45 @@ app.get('/api/available-dates', async (req, res) => {
       query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURDATE() ORDER BY date';
     }
     
-    const [slots] = await db.execute(query);
+    console.log('Wykonuję zapytanie:', query);
     
-    console.log('Raw slots z bazy:', slots);
-    // Upewnij się, że slots jest tablicą
-    if (!Array.isArray(slots)) {
-      console.error('Nieprawidłowy format danych z bazy:', slots);
+    try {
+      const [slots] = await db.execute(query);
+      console.log('Raw slots z bazy (typ):', typeof slots, 'czy tablica:', Array.isArray(slots));
+      console.log('Raw slots z bazy (zawartość):', JSON.stringify(slots));
+      
+      // Zawsze zwróć tablicę, nawet jeśli slots jest undefined
+      const safeSlots = Array.isArray(slots) ? slots : [];
+      
+      const dates = safeSlots.map(slot => {
+        if (!slot || !slot.date) {
+          console.warn('Nieprawidłowy format slotu:', slot);
+          return null;
+        }
+        try {
+          // Naprawiam problem z przesunięciem daty
+          const date = new Date(slot.date);
+          // Dodaj 1 dzień aby naprawić przesunięcie strefy czasowej
+          date.setDate(date.getDate() + 1);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        } catch (err) {
+          console.error('Błąd przetwarzania daty:', err, 'dla slotu:', slot);
+          return null;
+        }
+      }).filter(date => date !== null); // Filtruj nieprawidłowe daty
+      
+      console.log('Sformatowane daty:', dates);
+      return res.json({ dates });
+    } catch (dbError) {
+      console.error('Błąd zapytania do bazy danych:', dbError);
       return res.json({ dates: [] });
     }
-    
-    const dates = slots.map(slot => {
-      if (!slot || !slot.date) {
-        console.warn('Nieprawidłowy format slotu:', slot);
-        return null;
-      }
-      // Naprawiam problem z przesunięciem daty
-      const date = new Date(slot.date);
-      // Dodaj 1 dzień aby naprawić przesunięcie strefy czasowej
-      date.setDate(date.getDate() + 1);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }).filter(date => date !== null); // Filtruj nieprawidłowe daty
-    
-    console.log('Sformatowane daty:', dates);
-    res.json({ dates });
   } catch (error) {
     console.error('Błąd pobierania dat:', error);
-    res.status(500).json({ message: 'Błąd serwera', error: error.message });
+    return res.json({ dates: [] }); // Zawsze zwracaj tablicę dates, nawet w przypadku błędu
   }
 });
 
@@ -426,31 +440,44 @@ app.get('/api/available-slots/:date', async (req, res) => {
     
     // Sprawdzamy format daty
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ message: 'Nieprawidłowy format daty. Wymagany format: YYYY-MM-DD' });
+      console.warn('Nieprawidłowy format daty:', date);
+      return res.json({ slots: [] }); // Zwracamy pustą tablicę zamiast błędu
     }
     
-    const [availableSlots] = await db.execute(
-      'SELECT time FROM available_slots WHERE date = ? ORDER BY time',
-      [date]
-    );
-    console.log('Dostępne sloty z bazy:', availableSlots);
-    
-    const [reservedSlots] = await db.execute(
-      'SELECT time FROM appointments WHERE date = ? AND status != "cancelled"',
-      [date]
-    );
-    console.log('Zarezerwowane sloty:', reservedSlots);
-    
-    const reservedTimes = reservedSlots.map(slot => slot.time);
-    const freeSlots = availableSlots
-      .map(slot => slot.time)
-      .filter(time => !reservedTimes.includes(time));
-    
-    console.log('Wolne sloty:', freeSlots);
-    res.json({ slots: freeSlots });
+    try {
+      const [availableSlots] = await db.execute(
+        'SELECT time FROM available_slots WHERE date = ? ORDER BY time',
+        [date]
+      );
+      console.log('Dostępne sloty z bazy (typ):', typeof availableSlots, 'czy tablica:', Array.isArray(availableSlots));
+      console.log('Dostępne sloty z bazy (zawartość):', JSON.stringify(availableSlots));
+      
+      const [reservedSlots] = await db.execute(
+        'SELECT time FROM appointments WHERE date = ? AND status != "cancelled"',
+        [date]
+      );
+      console.log('Zarezerwowane sloty (typ):', typeof reservedSlots, 'czy tablica:', Array.isArray(reservedSlots));
+      console.log('Zarezerwowane sloty (zawartość):', JSON.stringify(reservedSlots));
+      
+      // Zabezpieczenie przed błędami - używamy pustych tablic, jeśli dane są nieprawidłowe
+      const safeAvailableSlots = Array.isArray(availableSlots) ? availableSlots : [];
+      const safeReservedSlots = Array.isArray(reservedSlots) ? reservedSlots : [];
+      
+      const reservedTimes = safeReservedSlots.map(slot => slot?.time).filter(Boolean);
+      const freeSlots = safeAvailableSlots
+        .map(slot => slot?.time)
+        .filter(Boolean)
+        .filter(time => !reservedTimes.includes(time));
+      
+      console.log('Wolne sloty:', freeSlots);
+      return res.json({ slots: freeSlots });
+    } catch (dbError) {
+      console.error('Błąd zapytania do bazy danych:', dbError);
+      return res.json({ slots: [] }); // Zwracamy pustą tablicę zamiast błędu
+    }
   } catch (error) {
     console.error('Błąd pobierania slotów:', error);
-    res.status(500).json({ message: 'Błąd serwera', error: error.message });
+    return res.json({ slots: [] }); // Zawsze zwracaj tablicę slots, nawet w przypadku błędu
   }
 });
 
