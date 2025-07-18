@@ -409,8 +409,7 @@ app.get('/api/available-dates', async (req, res) => {
         try {
           // Naprawiam problem z przesunięciem daty
           const date = new Date(slot.date);
-          // Dodaj 1 dzień aby naprawić przesunięcie strefy czasowej
-          date.setDate(date.getDate() + 1);
+          // Nie dodajemy dodatkowego dnia, aby uniknąć przesunięcia
           const year = date.getFullYear();
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');

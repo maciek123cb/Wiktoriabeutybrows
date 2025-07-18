@@ -35,6 +35,7 @@ const AdminCalendar = () => {
 
   const fetchSlotsForDate = async (date) => {
     try {
+      // Formatuj datę w formacie YYYY-MM-DD
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
@@ -58,7 +59,7 @@ const AdminCalendar = () => {
     setLoading(true)
     try {
       const token = localStorage.getItem('authToken')
-      // Naprawiam problem z przesunięciem daty - używam lokalnej daty
+      // Formatuj datę w formacie YYYY-MM-DD
       const year = selectedDate.getFullYear()
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
       const day = String(selectedDate.getDate()).padStart(2, '0')
@@ -96,7 +97,7 @@ const AdminCalendar = () => {
 
     try {
       const token = localStorage.getItem('authToken')
-      // Naprawiam problem z przesunięciem daty
+      // Formatuj datę w formacie YYYY-MM-DD
       const year = selectedDate.getFullYear()
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
       const day = String(selectedDate.getDate()).padStart(2, '0')
