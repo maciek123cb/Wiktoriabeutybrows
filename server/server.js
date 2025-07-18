@@ -334,35 +334,132 @@ app.post('/api/book-appointment', verifyToken, async (req, res) => {
   try {
     const { date, time, notes } = req.body;
     const userId = req.user.id;
+    
+    console.log('Próba rezerwacji terminu:', { date, time, userId });
+    
+    // Walidacja formatu daty
+    if (!date || !time) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data i godzina są wymagane'
+      });
+    }
+    
+    // Normalizacja formatu daty
+    let formattedDate;
+    try {
+      // Obsługa różnych formatów daty
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Nieprawidłowy format daty'
+        });
+      }
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      formattedDate = `${year}-${month}-${day}`;
+      console.log('Znormalizowana data:', formattedDate);
+    } catch (dateError) {
+      console.error('Błąd przetwarzania daty:', dateError);
+      return res.status(400).json({
+        success: false,
+        message: 'Nieprawidłowy format daty'
+      });
+    }
+    
+    // Sprawdzamy, czy termin jest dostępny
+    let availableSlot;
+    try {
+      if (dbType === 'postgres') {
+        console.log('Używam zapytania PostgreSQL dla sprawdzenia dostępności terminu');
+        const [result] = await db.execute(
+          "SELECT id FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND time = $2",
+          [formattedDate, time]
+        );
+        availableSlot = result;
+      } else {
+        console.log('Używam zapytania MySQL dla sprawdzenia dostępności terminu');
+        const [result] = await db.execute(
+          'SELECT id FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND time = ?',
+          [formattedDate, time]
+        );
+        availableSlot = result;
+      }
+      console.log('Wynik sprawdzenia dostępności terminu:', availableSlot);
+    } catch (dbError) {
+      console.error('Błąd zapytania o dostępność terminu:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Błąd sprawdzania dostępności terminu'
+      });
+    }
 
-    const [availableSlot] = await db.execute(
-      'SELECT id FROM available_slots WHERE date = ? AND time = ?',
-      [date, time]
-    );
-
-    if (availableSlot.length === 0) {
+    if (!availableSlot || availableSlot.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'Ten termin nie jest dostępny'
       });
     }
 
-    const [existingAppointment] = await db.execute(
-      'SELECT id FROM appointments WHERE date = ? AND time = ? AND status != "cancelled"',
-      [date, time]
-    );
+    // Sprawdzamy, czy termin nie jest już zarezerwowany
+    let existingAppointment;
+    try {
+      if (dbType === 'postgres') {
+        console.log('Używam zapytania PostgreSQL dla sprawdzenia rezerwacji');
+        const [result] = await db.execute(
+          "SELECT id FROM appointments WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND time = $2 AND status != 'cancelled'",
+          [formattedDate, time]
+        );
+        existingAppointment = result;
+      } else {
+        console.log('Używam zapytania MySQL dla sprawdzenia rezerwacji');
+        const [result] = await db.execute(
+          'SELECT id FROM appointments WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND time = ? AND status != "cancelled"',
+          [formattedDate, time]
+        );
+        existingAppointment = result;
+      }
+      console.log('Wynik sprawdzenia istniejącej rezerwacji:', existingAppointment);
+    } catch (dbError) {
+      console.error('Błąd zapytania o istniejącą rezerwację:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Błąd sprawdzania istniejących rezerwacji'
+      });
+    }
 
-    if (existingAppointment.length > 0) {
+    if (existingAppointment && existingAppointment.length > 0) {
       return res.status(409).json({
         success: false,
         message: 'Ten termin został już zarezerwowany'
       });
     }
 
-    await db.execute(
-      'INSERT INTO appointments (user_id, date, time, notes) VALUES (?, ?, ?, ?)',
-      [userId, date, time, notes || '']
-    );
+    // Dodajemy nową rezerwację
+    try {
+      if (dbType === 'postgres') {
+        console.log('Używam zapytania PostgreSQL dla dodania rezerwacji');
+        await db.execute(
+          "INSERT INTO appointments (user_id, date, time, notes) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4)",
+          [userId, formattedDate, time, notes || '']
+        );
+      } else {
+        console.log('Używam zapytania MySQL dla dodania rezerwacji');
+        await db.execute(
+          'INSERT INTO appointments (user_id, date, time, notes) VALUES (?, ?, ?, ?)',
+          [userId, formattedDate, time, notes || '']
+        );
+      }
+      console.log('Rezerwacja dodana pomyślnie');
+    } catch (dbError) {
+      console.error('Błąd dodawania rezerwacji:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Błąd dodawania rezerwacji'
+      });
+    }
 
     res.json({
       success: true,
