@@ -107,6 +107,11 @@ function App() {
     if (token && savedUser) {
       const userData = JSON.parse(savedUser)
       setUser(userData)
+      
+      // Jeśli użytkownik jest adminem i nie jest na stronie /admin, przekieruj go tam
+      if (userData.role === 'admin' && window.location.pathname !== '/admin') {
+        window.location.href = '/admin';
+      }
     }
   }, [])
 
@@ -184,20 +189,23 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/booking" element={<BookingPage />} />
         <Route path="/login" element={
-          <LoginForm 
-            onLogin={(userData) => {
-              handleLogin(userData)
-              if (userData.role === 'admin') {
-                // Użyj window.location.href z większym opóźnieniem
-                setTimeout(() => {
+          user && user.role === 'admin' ? (
+            <Navigate to="/admin" replace />
+          ) : user ? (
+            <Navigate to="/" replace />
+          ) : (
+            <LoginForm 
+              onLogin={(userData) => {
+                handleLogin(userData)
+                if (userData.role === 'admin') {
                   window.location.href = '/admin';
-                }, 300);
-              } else {
-                window.location.href = '/'
-              }
-            }}
-            onRegisterSuccess={handleRegisterSuccess}
-          />
+                } else {
+                  window.location.href = '/'
+                }
+              }}
+              onRegisterSuccess={handleRegisterSuccess}
+            />
+          )
         } />
         <Route path="/register" element={
           <RegisterForm 

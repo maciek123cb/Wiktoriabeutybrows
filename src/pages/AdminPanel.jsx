@@ -19,7 +19,8 @@ const AdminPanel = ({ user, onLogout }) => {
     const fetchAdminData = async () => {
       try {
         const token = localStorage.getItem('authToken')
-        const response = await fetch('http://localhost:3001/api/admin', {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${API_URL}/api/admin`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

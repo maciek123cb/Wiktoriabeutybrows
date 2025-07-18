@@ -67,7 +67,15 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
         localStorage.setItem('authToken', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
         console.log('Zalogowano pomyślnie, przekierowuję...');
-        onLogin(data.user)
+        
+        // Jeśli użytkownik jest adminem, przekieruj bezpośrednio do panelu admina
+        if (data.user.role === 'admin') {
+          console.log('Przekierowanie do panelu admina...');
+          onLogin(data.user);
+          window.location.href = '/admin';
+        } else {
+          onLogin(data.user);
+        }
       } else {
         setLoginError(data.message || 'Błąd logowania')
       }
