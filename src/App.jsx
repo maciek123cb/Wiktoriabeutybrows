@@ -117,10 +117,8 @@ function App() {
       const userData = JSON.parse(savedUser)
       setUser(userData)
       
-      // Jeśli użytkownik jest adminem, pokaż panel admina
-      if (userData.role === 'admin') {
-        setShowAdminPanel(true);
-      }
+      // Nie pokazujemy automatycznie panelu admina przy starcie
+      // aby uniknąć problemu z automatycznym zamykaniem
     }
   }, [])
 
@@ -165,6 +163,7 @@ function App() {
 
   const handleCloseAdminPanel = () => {
     setShowAdminPanel(false)
+    // Nie wylogowujemy użytkownika przy zamknięciu panelu
   }
 
   const handleLogout = () => {
@@ -213,7 +212,8 @@ function App() {
             <LoginForm 
               onLogin={(userData) => {
                 handleLogin(userData)
-                window.location.href = '/'
+                // Używamy Navigate zamiast window.location.href, aby uniknąć przeładowania strony
+                window.history.pushState({}, '', '/')
               }}
               onRegisterSuccess={handleRegisterSuccess}
             />

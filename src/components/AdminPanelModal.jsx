@@ -26,9 +26,9 @@ const AdminPanelModal = ({ user, onClose }) => {
             <AdminPanel 
               user={user} 
               onLogout={() => {
-                localStorage.removeItem('authToken')
-                localStorage.removeItem('user')
-                window.location.replace('/')
+                // Zamiast bezpośrednio wylogowywać, używamy funkcji onClose
+                // aby najpierw zamknąć modal, a potem obsłużyć wylogowanie w App.jsx
+                onClose();
               }}
               isModal={true}
             />

@@ -45,8 +45,8 @@ const AdminPanel = ({ user, onLogout, isModal = false }) => {
   }, [onLogout])
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
+    // Przekazujemy obsługę wylogowania do funkcji onLogout
+    // bez usuwania tokena i danych użytkownika tutaj
     onLogout()
   }
 
