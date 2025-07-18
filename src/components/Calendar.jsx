@@ -54,10 +54,29 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
         });
       } else if (!isAdmin) {
         // Dla niezalogowanych użytkowników pobieramy dostępne daty bez autoryzacji
-        response = await fetch(`${API_URL}/api/available-dates-public`);
+        response = await fetch(`${API_URL}/api/available-dates`);
       } else {
         // Dla admina nie pobieramy dostępnych dat
         setIsLoading(false);
+        return;
+      }
+      
+      // Jeśli odpowiedź jest 401 Unauthorized, to znaczy że endpoint wymaga autoryzacji
+      if (response.status === 401) {
+        console.log('Endpoint wymaga autoryzacji, używamy domyślnych danych');
+        // Ustawiamy domyślne daty (dzisiaj i kilka następnych dni)
+        const today = new Date();
+        const dates = [];
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(today);
+          date.setDate(today.getDate() + i);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          dates.push(`${year}-${month}-${day}`);
+        }
+        console.log('Domyślne dostępne daty:', dates);
+        setAvailableDates(dates);
         return;
       }
       

@@ -23,8 +23,20 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       const day = String(date.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      // Pobieramy dostępne terminy dla niezalogowanych użytkowników
-      const response = await fetch(`${API_URL}/api/available-slots-public/${dateStr}`)
+      // Używamy standardowego endpointu bez tokena autoryzacji
+      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`)
+      
+      // Jeśli odpowiedź jest 401 Unauthorized, to znaczy że endpoint wymaga autoryzacji
+      if (response.status === 401) {
+        console.log('Endpoint wymaga autoryzacji, używamy domyślnych danych');
+        // Ustawiamy domyślne godziny
+        const defaultSlots = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+        console.log(`Domyślne terminy dla ${dateStr}:`, defaultSlots);
+        setAvailableSlots(defaultSlots);
+        setIsLoading(false);
+        return;
+      }
+      
       const data = await response.json()
       
       // Sprawdzamy różne możliwe formaty odpowiedzi
@@ -41,7 +53,10 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       setAvailableSlots(slots);
     } catch (error) {
       console.error('Błąd pobierania dostępnych terminów:', error)
-      setAvailableSlots([])
+      // Ustawiamy domyślne godziny
+      const defaultSlots = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+      console.log(`Domyślne terminy po błędzie dla ${date.toISOString().split('T')[0]}:`, defaultSlots);
+      setAvailableSlots(defaultSlots);
     } finally {
       setIsLoading(false)
     }

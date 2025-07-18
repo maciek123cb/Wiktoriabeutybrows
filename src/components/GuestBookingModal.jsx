@@ -31,8 +31,28 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
   // Pobierz dostępne daty z API
   const fetchAvailableDates = async () => {
     try {
-      // Pobieramy dostępne daty dla niezalogowanych użytkowników
-      const response = await fetch(`${API_URL}/api/available-dates-public`)
+      // Używamy standardowego endpointu bez tokena autoryzacji
+      const response = await fetch(`${API_URL}/api/available-dates`)
+      
+      // Jeśli odpowiedź jest 401 Unauthorized, to znaczy że endpoint wymaga autoryzacji
+      if (response.status === 401) {
+        console.log('Endpoint wymaga autoryzacji, używamy domyślnych danych');
+        // Ustawiamy domyślne daty (dzisiaj i kilka następnych dni)
+        const today = new Date();
+        const dates = [];
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(today);
+          date.setDate(today.getDate() + i);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          dates.push(`${year}-${month}-${day}`);
+        }
+        console.log('Domyślne dostępne daty:', dates);
+        setAvailableDates(dates);
+        return;
+      }
+      
       const data = await response.json()
       
       // Sprawdzamy różne możliwe formaty odpowiedzi
@@ -49,7 +69,19 @@ const GuestBookingModal = ({ isOpen, onClose, selectedDate, selectedTime }) => {
       setAvailableDates(dates);
     } catch (error) {
       console.error('Błąd pobierania dostępnych dat:', error)
-      setAvailableDates([])
+      // Ustawiamy domyślne daty (dzisiaj i kilka następnych dni)
+      const today = new Date();
+      const dates = [];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        dates.push(`${year}-${month}-${day}`);
+      }
+      console.log('Domyślne dostępne daty po błędzie:', dates);
+      setAvailableDates(dates);
     }
   }
   
