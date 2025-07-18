@@ -7,10 +7,20 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   is_active BOOLEAN DEFAULT FALSE,
-  role TEXT CHECK (role IN ('user', 'admin')) DEFAULT 'user',
+  role TEXT DEFAULT 'user',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Dodanie ograniczenia CHECK dla role
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_role_check'
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin'));
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS available_slots (
   id SERIAL PRIMARY KEY,
@@ -26,12 +36,22 @@ CREATE TABLE IF NOT EXISTS appointments (
   date DATE NOT NULL,
   time TIME NOT NULL,
   notes TEXT,
-  status TEXT CHECK (status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
+  status TEXT DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE (date, time)
 );
+
+-- Dodanie ograniczenia CHECK dla status
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'appointments_status_check'
+  ) THEN
+    ALTER TABLE appointments ADD CONSTRAINT appointments_status_check CHECK (status IN ('pending', 'confirmed', 'cancelled'));
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS services (
   id SERIAL PRIMARY KEY,

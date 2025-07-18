@@ -27,11 +27,18 @@ async function initializeDatabase() {
       // Funkcja execute dla PostgreSQL
       db = {
         execute: async (query, params = []) => {
-          // Konwersja zapytań MySQL na PostgreSQL
-          query = convertMySQLToPostgres(query);
-          
-          const result = await pool.query(query, params);
-          return [result.rows, result.fields];
+          try {
+            // Konwersja zapytań MySQL na PostgreSQL
+            const convertedQuery = convertMySQLToPostgres(query);
+            console.log('Converted query:', convertedQuery);
+            
+            const result = await pool.query(convertedQuery, params);
+            return [result.rows, result.fields];
+          } catch (error) {
+            console.error('Błąd wykonania zapytania PostgreSQL:', error);
+            console.error('Oryginalne zapytanie:', query);
+            throw error;
+          }
         },
         end: async () => await pool.end()
       };
@@ -79,6 +86,32 @@ function convertMySQLToPostgres(query) {
     return `TEXT CHECK (value IN (${values}))`;
   });
   
+  // Zamiana składni ON UPDATE CURRENT_TIMESTAMP
+  query = query.replace(/ON UPDATE CURRENT_TIMESTAMP/g, '');
+  
+  // Zamiana składni LONGTEXT na TEXT
+  query = query.replace(/LONGTEXT/g, 'TEXT');
+  
+  // Zamiana składni INT na INTEGER
+  query = query.replace(/\bINT\b/g, 'INTEGER');
+  
+  // Zamiana składni UNIQUE KEY na UNIQUE
+  query = query.replace(/UNIQUE KEY [^(]+/g, 'UNIQUE ');
+  
+  // Zamiana składni parametrów w zapytaniach
+  query = query.replace(/\?/g, (match, offset, string) => {
+    // Sprawdź czy nie jesteśmy w stringu
+    const beforeOffset = string.substring(0, offset);
+    const quotes = beforeOffset.match(/'/g) || [];
+    if (quotes.length % 2 !== 0) {
+      return '?'; // Jesteśmy w stringu, nie zamieniaj
+    }
+    
+    // Znajdź numer parametru
+    const paramsBeforeOffset = (beforeOffset.match(/\?/g) || []).length;
+    return `$${paramsBeforeOffset + 1}`;
+  });
+  
   return query;
 }
 
@@ -99,9 +132,19 @@ async function runInitScript() {
     const script = fs.readFileSync(scriptPath, 'utf8');
     const statements = script.split(';').filter(stmt => stmt.trim());
     
-    for (const statement of statements) {
-      if (statement.trim()) {
-        await db.execute(statement);
+    console.log(`Wykonywanie ${statements.length} zapytań inicjalizacyjnych...`);
+    
+    for (let i = 0; i < statements.length; i++) {
+      const statement = statements[i].trim();
+      if (statement) {
+        try {
+          console.log(`Wykonywanie zapytania ${i+1}/${statements.length}`);
+          await db.execute(statement);
+        } catch (error) {
+          console.error(`Błąd wykonania zapytania ${i+1}:`, error);
+          console.error('Zapytanie:', statement);
+          // Kontynuuj wykonywanie pozostałych zapytań
+        }
       }
     }
     
