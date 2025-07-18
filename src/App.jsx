@@ -21,6 +21,7 @@ import RegisterForm from './components/RegisterForm'
 import AdminPanelModal from './components/AdminPanelModal'
 import BookingPage from './pages/BookingPage'
 import BookingForm from './components/BookingForm'
+import BookingModal from './components/BookingModal'
 import ClientPanel from './components/ClientPanel'
 
 // Komponent strony głównej
@@ -72,12 +73,22 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
       <Footer />
       
       {/* Modal umawiania wizyty */}
-      {showBookingForm && user && (
-        <BookingForm 
-          user={user}
-          onClose={() => setShowBookingForm(false)}
-          onSuccess={handleBookingSuccess}
-        />
+      {showBookingForm && (
+        user && user.role === 'user' ? (
+          <BookingForm 
+            user={user}
+            onClose={() => setShowBookingForm(false)}
+            onSuccess={handleBookingSuccess}
+          />
+        ) : (
+          <BookingModal 
+            isOpen={true}
+            onClose={() => setShowBookingForm(false)}
+            selectedDate={new Date().toISOString().split('T')[0]}
+            selectedTime="10:00"
+            onSuccess={() => {}}
+          />
+        )
       )}
       
       {/* Panel klienta */}
@@ -155,14 +166,9 @@ function App() {
   }
 
   const handleBookingClick = () => {
-    if (user && user.role === 'user') {
-      // Pokazujemy formularz rezerwacji jako modal
-      setShowBookingForm(true);
-    } else {
-      // Jeśli użytkownik nie jest zalogowany, przekieruj do strony logowania
-      // z informacją, że po zalogowaniu będzie mógł dokonać rezerwacji
-      window.location.href = '/login';
-    }
+    // Zawsze pokazujemy formularz rezerwacji jako modal
+    // Niezalogowani użytkownicy zobaczą informację o konieczności logowania w modalu
+    setShowBookingForm(true);
   }
 
   const handleClientPanelClick = () => {
