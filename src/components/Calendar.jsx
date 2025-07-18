@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
 import { API_URL } from '../config'
 
-const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availableDates: propAvailableDates }) => {
+const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availableDates: propAvailableDates = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [availableDates, setAvailableDates] = useState([])
   const [selectedDate, setSelectedDate] = useState(null)
@@ -12,7 +12,9 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
 
   // Użyj dat przekazanych jako prop, jeśli są dostępne
   useEffect(() => {
+    console.log('Calendar - propAvailableDates:', propAvailableDates);
     if (propAvailableDates && propAvailableDates.length > 0) {
+      console.log('Calendar - ustawiam dostępne daty z props:', propAvailableDates);
       setAvailableDates(propAvailableDates);
     }
   }, [propAvailableDates]);
@@ -92,6 +94,9 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
   const isDateAvailable = (date) => {
     if (!date) return false
     
+    // W trybie admina wszystkie daty są dostępne
+    if (isAdmin) return true;
+    
     // Zabezpieczenie przed błędem, jeśli availableDates nie jest tablicą
     if (!Array.isArray(availableDates)) {
       console.warn('availableDates nie jest tablicą:', availableDates);
@@ -103,6 +108,14 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
+    
+    // Jeśli nie mamy dostępnych dat, zakładamy że wszystkie przyszłe daty są dostępne
+    // (dla celów demonstracyjnych dla niezalogowanych użytkowników)
+    if (availableDates.length === 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return date >= today;
+    }
     
     const isAvailable = availableDates.includes(dateStr)
     // Ograniczamy logowanie, aby nie zaśmiecać konsoli
@@ -145,7 +158,8 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
       onDateSelect?.(date)
     } else {
       // Użytkownik może kliknąć tylko dostępne dni
-      if (isDateAvailable(date) && !isDateInPast(date)) {
+      // Dla niezalogowanych użytkowników pozwalamy kliknąć na wszystkie przyszłe dni
+      if (!isDateInPast(date)) {
         setSelectedDate(date)
         onDateSelect?.(date)
       }
