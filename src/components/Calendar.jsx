@@ -103,7 +103,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     // Sprawdzamy, czy użytkownik jest zalogowany
     const token = localStorage.getItem('authToken');
     
-    // Dla niezalogowanych użytkowników wszystkie przyszłe daty są dostępne
+    // Dla niezalogowanych użytkowników wszystkie przyszłe daty są dostępne do podglądu
     if (!token) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -147,7 +147,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
   const handleDateClick = (date) => {
     if (!date) return
     
-    // Dla wszystkich użytkowników (admin i niezalogowani) pozwalamy kliknąć na wszystkie przyszłe dni
+    // Dla wszystkich użytkowników (admin, zalogowani i niezalogowani) pozwalamy kliknąć na wszystkie przyszłe dni
     if (!isDateInPast(date)) {
       setSelectedDate(date)
       onDateSelect?.(date)

@@ -22,6 +22,7 @@ import AdminPanelModal from './components/AdminPanelModal'
 import BookingPage from './pages/BookingPage'
 import BookingForm from './components/BookingForm'
 import BookingModal from './components/BookingModal'
+import GuestBookingModal from './components/GuestBookingModal'
 import ClientPanel from './components/ClientPanel'
 
 // Komponent strony głównej
@@ -80,13 +81,20 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
             onClose={() => setShowBookingForm(false)}
             onSuccess={handleBookingSuccess}
           />
-        ) : (
+        ) : user ? (
           <BookingModal 
             isOpen={true}
             onClose={() => setShowBookingForm(false)}
             selectedDate={new Date().toISOString().split('T')[0]}
             selectedTime="10:00"
             onSuccess={() => {}}
+          />
+        ) : (
+          <GuestBookingModal 
+            isOpen={true}
+            onClose={() => setShowBookingForm(false)}
+            selectedDate={new Date().toISOString().split('T')[0]}
+            selectedTime="10:00"
           />
         )
       )}
