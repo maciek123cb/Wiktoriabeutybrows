@@ -1,4 +1,5 @@
-import { motion, useEffect } from 'framer-motion'
+import { motion } from 'framer-motion'
+import { useEffect } from 'react'
 import { ArrowLeft, Lock, Phone, UserPlus, LogIn } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
