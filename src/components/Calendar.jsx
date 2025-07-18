@@ -19,12 +19,18 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
 
   const fetchAvailableDates = async () => {
     try {
+      console.log('Pobieranie dostępnych dat z:', `${API_URL}/api/available-dates`);
       const response = await fetch(`${API_URL}/api/available-dates`)
+      if (!response.ok) {
+        throw new Error(`Błąd HTTP: ${response.status}`);
+      }
       const data = await response.json()
       console.log('Dostępne daty z serwera:', data.dates)
       setAvailableDates(data.dates || [])
     } catch (error) {
       console.error('Błąd pobierania dostępnych dat:', error)
+      // Ustawienie pustej tablicy w przypadku błędu
+      setAvailableDates([])
     }
   }
 
@@ -59,7 +65,10 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [] }) => {
     const day = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
     const isAvailable = availableDates.includes(dateStr)
-    console.log(`Sprawdzam datę ${dateStr}:`, isAvailable, 'Dostępne daty:', availableDates)
+    // Ograniczamy logowanie, aby nie zaśmiecać konsoli
+    if (isAvailable) {
+      console.log(`Data ${dateStr} jest dostępna`)
+    }
     return isAvailable
   }
 

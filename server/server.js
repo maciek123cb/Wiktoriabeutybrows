@@ -84,6 +84,7 @@ const upload = multer({
 
 // Połączenie z bazą danych
 let db;
+let dbType = process.env.DB_TYPE || 'mysql';
 async function connectDB() {
   try {
     // Inicjalizacja bazy danych za pomocą adaptera
@@ -379,24 +380,31 @@ app.post('/api/book-appointment', verifyToken, async (req, res) => {
 // API dla dostępnych terminów
 app.get('/api/available-dates', async (req, res) => {
   try {
-    const [slots] = await db.execute(
-      'SELECT DISTINCT date FROM available_slots WHERE date >= CURDATE() ORDER BY date'
-    );
+    let query;
+    if (dbType === 'postgres') {
+      query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURRENT_DATE ORDER BY date';
+    } else {
+      query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURDATE() ORDER BY date';
+    }
+    
+    const [slots] = await db.execute(query);
     
     console.log('Raw slots z bazy:', slots);
     const dates = slots.map(slot => {
       // Naprawiam problem z przesunięciem daty
-      const date = new Date(slot.date)
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
+      const date = new Date(slot.date);
+      // Dodaj 1 dzień aby naprawić przesunięcie strefy czasowej
+      date.setDate(date.getDate() + 1);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     });
     console.log('Sformatowane daty:', dates);
     res.json({ dates });
   } catch (error) {
     console.error('Błąd pobierania dat:', error);
-    res.status(500).json({ message: 'Błąd serwera' });
+    res.status(500).json({ message: 'Błąd serwera', error: error.message });
   }
 });
 
@@ -404,6 +412,11 @@ app.get('/api/available-slots/:date', async (req, res) => {
   try {
     const { date } = req.params;
     console.log('Pobieranie slotów dla daty:', date);
+    
+    // Sprawdzamy format daty
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'Nieprawidłowy format daty. Wymagany format: YYYY-MM-DD' });
+    }
     
     const [availableSlots] = await db.execute(
       'SELECT time FROM available_slots WHERE date = ? ORDER BY time',
@@ -426,7 +439,7 @@ app.get('/api/available-slots/:date', async (req, res) => {
     res.json({ slots: freeSlots });
   } catch (error) {
     console.error('Błąd pobierania slotów:', error);
-    res.status(500).json({ message: 'Błąd serwera' });
+    res.status(500).json({ message: 'Błąd serwera', error: error.message });
   }
 });
 

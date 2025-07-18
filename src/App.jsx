@@ -156,15 +156,12 @@ function App() {
 
   const handleBookingClick = () => {
     if (user && user.role === 'user') {
-      try {
-        setShowBookingForm(true);
-      } catch (error) {
-        console.error('Błąd przy próbie otwarcia formularza rezerwacji:', error);
-        // Alternatywne rozwiązanie - przekierowanie do strony rezerwacji
-        window.location.href = '/booking';
-      }
+      // Pokazujemy formularz rezerwacji jako modal
+      setShowBookingForm(true);
     } else {
-      window.location.href = '/booking'
+      // Jeśli użytkownik nie jest zalogowany, przekieruj do strony logowania
+      // z informacją, że po zalogowaniu będzie mógł dokonać rezerwacji
+      window.location.href = '/login';
     }
   }
 
@@ -250,6 +247,8 @@ function App() {
             onRegisterSuccess={handleRegisterSuccess}
           />
         } />
+        {/* Przekierowanie dla wszystkich nieznanych ścieżek */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   )

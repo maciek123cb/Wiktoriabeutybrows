@@ -1,8 +1,19 @@
-import { motion } from 'framer-motion'
+import { motion, useEffect } from 'framer-motion'
 import { ArrowLeft, Lock, Phone, UserPlus, LogIn } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const BookingPage = ({ onBack }) => {
   const SALON_PHONE = '532-128-227'
+  const navigate = useNavigate()
+  
+  // Przekieruj do strony głównej po krótkim opóźnieniu
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      navigate('/');
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
@@ -37,9 +48,10 @@ const BookingPage = ({ onBack }) => {
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-8">
               <h2 className="text-xl font-semibold text-amber-800 mb-4">
-                Wymagane logowanie
+                Przekierowywanie...
               </h2>
               <p className="text-amber-700 leading-relaxed">
+                Za chwilę zostaniesz przekierowany do strony głównej. 
                 Aby umówić wizytę online, musisz być zalogowany. 
                 Jeśli nie masz jeszcze konta, zarejestruj się lub skontaktuj się z nami telefonicznie.
               </p>

@@ -18,20 +18,7 @@ const CTA = ({ onBookAppointment }) => {
           </p>
           <motion.button
             className="btn-primary text-xl py-4 px-8"
-            onClick={() => {
-              try {
-                onBookAppointment();
-              } catch (error) {
-                console.error('Błąd przy próbie otwarcia formularza rezerwacji:', error);
-                // Alternatywne rozwiązanie - próba użycia globalnej funkcji
-                if (window.globalSetShowBookingForm) {
-                  window.globalSetShowBookingForm(true);
-                } else {
-                  // Jeśli nic nie zadziała, przekieruj do strony rezerwacji
-                  window.location.href = '/booking';
-                }
-              }
-            }}
+            onClick={onBookAppointment}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
