@@ -46,7 +46,7 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
         onLogout={() => {
           localStorage.removeItem('authToken')
           localStorage.removeItem('user')
-          window.location.href = '/'
+          window.location.replace('/')
         }}
         onAdminClick={() => navigate('/admin')}
         onClientPanelClick={() => setShowClientPanel(true)}
@@ -150,7 +150,8 @@ function App() {
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
     setUser(null)
-    window.location.href = '/'
+    // Użyj window.location.replace zamiast window.location.href
+    window.location.replace('/')
   }
 
   return (
@@ -187,10 +188,10 @@ function App() {
             onLogin={(userData) => {
               handleLogin(userData)
               if (userData.role === 'admin') {
-                // Użyj window.location.replace zamiast window.location.href
+                // Użyj window.location.href z większym opóźnieniem
                 setTimeout(() => {
-                  window.location.replace('/admin');
-                }, 100);
+                  window.location.href = '/admin';
+                }, 300);
               } else {
                 window.location.href = '/'
               }

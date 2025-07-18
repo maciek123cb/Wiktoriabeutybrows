@@ -15,9 +15,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [/\.onrender\.com$/, 'https://wiktoriabeutybrows.onrender.com'] 
+    ? ['https://wiktoriabeutybrows-frontend.onrender.com', 'https://wiktoriabeutybrows.onrender.com', /\.onrender\.com$/] 
     : 'http://localhost:3000',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -36,6 +38,19 @@ app.get('/', (req, res) => {
 
 app.get('./', (req, res) => {
   res.json({ status: 'API działa poprawnie' });
+});
+
+// Dodatkowy endpoint dla sprawdzenia CORS
+app.options('/api/login', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.status(200).send();
+});
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
 });
 
 // Konfiguracja multer dla uploadów

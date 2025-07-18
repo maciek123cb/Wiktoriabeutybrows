@@ -47,6 +47,7 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
     if (!validateForm()) return
 
     setIsLoading(true)
+    console.log('Próba logowania do:', `${API_URL}/api/login`);
 
     try {
       const response = await fetch(`${API_URL}/api/login`, {
@@ -57,17 +58,21 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
         body: JSON.stringify(formData),
       })
 
+      console.log('Odpowiedź serwera:', response.status);
       const data = await response.json()
+      console.log('Dane z serwera:', data);
 
       if (data.success) {
         // Zapisz token w localStorage
         localStorage.setItem('authToken', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
+        console.log('Zalogowano pomyślnie, przekierowuję...');
         onLogin(data.user)
       } else {
-        setLoginError(data.message)
+        setLoginError(data.message || 'Błąd logowania')
       }
     } catch (error) {
+      console.error('Błąd logowania:', error);
       setLoginError('Błąd połączenia z serwerem')
     } finally {
       setIsLoading(false)
