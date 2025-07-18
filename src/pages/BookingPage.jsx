@@ -12,41 +12,18 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [availableSlots, setAvailableSlots] = useState([])
-  const [availableDates, setAvailableDates] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
   // Pobierz dostępne daty przy ładowaniu strony
   useEffect(() => {
-    fetchAvailableDates()
-    // Ustaw domyślną datę (dzisiaj lub pierwszy dostępny dzień)
+    // Ustaw domyślną datę (dzisiaj)
     const today = new Date()
     setSelectedDate(today)
     fetchAvailableSlots(today)
   }, [])
   
-  // Pobierz dostępne daty
-  const fetchAvailableDates = async () => {
-    try {
-      console.log('Pobieranie dostępnych dat z API...')
-      const response = await fetch(`${API_URL}/api/available-dates`)
-      const data = await response.json()
-      console.log('Otrzymane daty z API:', data)
-      const dates = Array.isArray(data.dates) ? data.dates : []
-      console.log('Przetworzone daty:', dates)
-      setAvailableDates(dates)
-      
-      // Jeśli mamy daty, ustaw pierwszą dostępną datę jako wybraną
-      if (dates.length > 0) {
-        const firstAvailableDate = new Date(dates[0])
-        console.log('Ustawiam pierwszą dostępną datę:', firstAvailableDate)
-        setSelectedDate(firstAvailableDate)
-        fetchAvailableSlots(firstAvailableDate)
-      }
-    } catch (error) {
-      console.error('Błąd pobierania dostępnych dat:', error)
-    }
-  }
+  // Funkcja fetchAvailableDates nie jest już potrzebna, ponieważ wszystkie przyszłe daty są dostępne
   
   // Pobierz dostępne sloty dla wybranej daty
   const fetchAvailableSlots = async (date) => {
@@ -126,8 +103,7 @@ const BookingPage = () => {
               <div>
                 <Calendar 
                   onDateSelect={handleDateSelect} 
-                  isAdmin={false} 
-                  availableDates={availableDates}
+                  isAdmin={false}
                 />
               </div>
               

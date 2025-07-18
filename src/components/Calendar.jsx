@@ -19,54 +19,9 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     }
   }, [propAvailableDates]);
 
-  useEffect(() => {
-    if (!isAdmin && !propAvailableDates) {
-      fetchAvailableDates()
-      // Odświeżaj co 30 sekund
-      const interval = setInterval(fetchAvailableDates, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [isAdmin, propAvailableDates])
+  // Nie potrzebujemy już pobierać dostępnych dat, ponieważ wszystkie przyszłe daty są dostępne
 
-  const fetchAvailableDates = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      console.log('Pobieranie dostępnych dat z:', `${API_URL}/api/available-dates`);
-      
-      // Pobierz token autoryzacji, jeśli użytkownik jest zalogowany
-      const token = localStorage.getItem('authToken');
-      
-      const response = await fetch(`${API_URL}/api/available-dates`, {
-        headers: token ? {
-          'Authorization': `Bearer ${token}`
-        } : {}
-      })
-      
-      // Nawet jeśli response nie jest ok, próbujemy odczytać JSON
-      const data = await response.json().catch(e => ({ dates: [] }));
-      
-      console.log('Odpowiedź z serwera:', data);
-      console.log('Dostępne daty z serwera (typ):', typeof data.dates, 'czy tablica:', Array.isArray(data.dates));
-      
-      // Zawsze używaj tablicy, nawet jeśli data.dates jest undefined lub null
-      const safeDates = Array.isArray(data.dates) ? data.dates : [];
-      console.log('Bezpieczne daty:', safeDates);
-      
-      setAvailableDates(safeDates);
-      
-      if (!response.ok) {
-        throw new Error(`Błąd HTTP: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Błąd pobierania dostępnych dat:', error);
-      setError(error.message);
-      // Ustawienie pustej tablicy w przypadku błędu
-      setAvailableDates([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  // Funkcja fetchAvailableDates nie jest już potrzebna, ponieważ wszystkie przyszłe daty są dostępne
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear()
@@ -97,32 +52,10 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     // W trybie admina wszystkie daty są dostępne
     if (isAdmin) return true;
     
-    // Zabezpieczenie przed błędem, jeśli availableDates nie jest tablicą
-    if (!Array.isArray(availableDates)) {
-      console.warn('availableDates nie jest tablicą:', availableDates);
-      return false;
-    }
-    
-    // Formatuj datę w formacie YYYY-MM-DD
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const dateStr = `${year}-${month}-${day}`
-    
-    // Jeśli nie mamy dostępnych dat, zakładamy że wszystkie przyszłe daty są dostępne
-    // (dla celów demonstracyjnych dla niezalogowanych użytkowników)
-    if (availableDates.length === 0) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return date >= today;
-    }
-    
-    const isAvailable = availableDates.includes(dateStr)
-    // Ograniczamy logowanie, aby nie zaśmiecać konsoli
-    if (isAvailable) {
-      console.log(`Data ${dateStr} jest dostępna`)
-    }
-    return isAvailable
+    // Dla niezalogowanych użytkowników wszystkie przyszłe daty są dostępne
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date >= today;
   }
 
   const hasSlots = (date) => {
@@ -152,17 +85,10 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
   const handleDateClick = (date) => {
     if (!date) return
     
-    if (isAdmin) {
-      // Admin może kliknąć każdy dzień
+    // Dla wszystkich użytkowników (admin i niezalogowani) pozwalamy kliknąć na wszystkie przyszłe dni
+    if (!isDateInPast(date)) {
       setSelectedDate(date)
       onDateSelect?.(date)
-    } else {
-      // Użytkownik może kliknąć tylko dostępne dni
-      // Dla niezalogowanych użytkowników pozwalamy kliknąć na wszystkie przyszłe dni
-      if (!isDateInPast(date)) {
-        setSelectedDate(date)
-        onDateSelect?.(date)
-      }
     }
   }
 
@@ -172,10 +98,6 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
       newDate.setMonth(prev.getMonth() + direction)
       return newDate
     })
-    // Odśwież dostępne daty po zmianie miesiąca tylko jeśli nie są przekazane jako prop
-    if (!isAdmin && !propAvailableDates) {
-      setTimeout(() => fetchAvailableDates(), 100)
-    }
   }
 
   const days = getDaysInMonth(currentDate)
@@ -208,15 +130,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           >
             <ChevronRight className="w-5 h-5" />
           </button>
-          {!isAdmin && !propAvailableDates && (
-            <button
-              onClick={fetchAvailableDates}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-primary text-lg"
-              title="Odśwież dostępne terminy"
-            >
-              ↻
-            </button>
-          )}
+          {/* Przycisk odświeżania nie jest już potrzebny */}
         </div>
       </div>
 
@@ -280,9 +194,9 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
               key={index}
               onClick={() => handleDateClick(date)}
               className={buttonClass}
-              disabled={!isAdmin && (!isAvailable || isPast)}
-              whileHover={{ scale: isAdmin || (isAvailable && !isPast) ? 1.05 : 1 }}
-              whileTap={{ scale: isAdmin || (isAvailable && !isPast) ? 0.95 : 1 }}
+              disabled={isPast}
+              whileHover={{ scale: !isPast ? 1.05 : 1 }}
+              whileTap={{ scale: !isPast ? 0.95 : 1 }}
             >
               {date.getDate()}
             </motion.button>
