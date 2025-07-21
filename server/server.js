@@ -23,6 +23,8 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Dodajemy obsługę statycznych plików z folderu images
+app.use('/images', express.static(path.join(__dirname, '..', 'images')));
 
 // Tworzenie katalogu uploads jeśli nie istnieje
 const uploadsDir = path.join(__dirname, 'uploads', 'metamorphoses');
@@ -1468,16 +1470,52 @@ app.delete('/api/admin/reviews/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Endpoint do pobierania listy dostępnych zdjęć z GitHub
+// Endpoint do pobierania listy dostępnych zdjęć z lokalnych folderów
 app.get('/api/available-images', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Brak uprawnień' });
     }
     
+    // Ścieżki do folderów z obrazami
+    const beforeDir = path.join(__dirname, '..', 'images', 'metamorphoses', 'before');
+    const afterDir = path.join(__dirname, '..', 'images', 'metamorphoses', 'after');
+    
+    // Odczytaj pliki z folderów
+    let beforeImages = [];
+    let afterImages = [];
+    
+    try {
+      // Sprawdź czy foldery istnieją
+      if (fs.existsSync(beforeDir)) {
+        const beforeFiles = fs.readdirSync(beforeDir);
+        beforeImages = beforeFiles
+          .filter(file => file !== '.gitkeep' && /\.(jpg|jpeg|png|gif)$/i.test(file))
+          .map(file => ({
+            name: file,
+            url: `/images/metamorphoses/before/${file}`
+          }));
+      }
+      
+      if (fs.existsSync(afterDir)) {
+        const afterFiles = fs.readdirSync(afterDir);
+        afterImages = afterFiles
+          .filter(file => file !== '.gitkeep' && /\.(jpg|jpeg|png|gif)$/i.test(file))
+          .map(file => ({
+            name: file,
+            url: `/images/metamorphoses/after/${file}`
+          }));
+      }
+    } catch (fsError) {
+      console.error('Błąd odczytu plików:', fsError);
+    }
+    
     res.json({
       success: true,
-      images: GITHUB_IMAGES
+      images: {
+        before: beforeImages,
+        after: afterImages
+      }
     });
   } catch (error) {
     console.error('Błąd pobierania listy zdjęć:', error);
@@ -1498,14 +1536,19 @@ app.get('/api/metamorphoses', async (req, res) => {
     
     const [metamorphoses] = await db.execute(query);
     
+    // Tworzymy pełny URL dla odpowiedzi
+    const baseUrl = process.env.NODE_ENV === 'production' ? 
+      (process.env.BASE_URL || 'https://wiktoriabeutybrows-backend.onrender.com') : 
+      'http://localhost:3001';
+    
     // Upewniamy się, że ścieżki do zdjęć są pełnymi URL
     const processedMetamorphoses = metamorphoses.map(item => {
       // Jeśli ścieżka nie zaczyna się od http, dodajemy pełny URL
       const beforeImage = item.before_image.startsWith('http') ? 
-        item.before_image : getFileUrl(item.before_image);
+        item.before_image : `${baseUrl}${item.before_image}`;
       
       const afterImage = item.after_image.startsWith('http') ? 
-        item.after_image : getFileUrl(item.after_image);
+        item.after_image : `${baseUrl}${item.after_image}`;
       
       return {
         ...item,
@@ -1531,19 +1574,35 @@ app.get('/api/admin/metamorphoses', verifyToken, async (req, res) => {
       'SELECT * FROM metamorphoses ORDER BY created_at DESC'
     );
     
+    // Tworzymy pełny URL dla odpowiedzi
+    const baseUrl = process.env.NODE_ENV === 'production' ? 
+      (process.env.BASE_URL || 'https://wiktoriabeutybrows-backend.onrender.com') : 
+      'http://localhost:3001';
+    
     // Upewniamy się, że ścieżki do zdjęć są pełnymi URL
     const processedMetamorphoses = metamorphoses.map(item => {
       // Jeśli ścieżka nie zaczyna się od http, dodajemy pełny URL
       const beforeImage = item.before_image.startsWith('http') ? 
-        item.before_image : getFileUrl(item.before_image);
+        item.before_image : `${baseUrl}${item.before_image}`;
       
       const afterImage = item.after_image.startsWith('http') ? 
-        item.after_image : getFileUrl(item.after_image);
+        item.after_image : `${baseUrl}${item.after_image}`;
+      
+      // Wyciągnij nazwy plików z pełnych URL
+      const getImageNameFromUrl = (url) => {
+        const parts = url.split('/');
+        return parts[parts.length - 1];
+      };
+      
+      const beforeImageName = getImageNameFromUrl(item.before_image);
+      const afterImageName = getImageNameFromUrl(item.after_image);
       
       return {
         ...item,
         before_image: beforeImage,
-        after_image: afterImage
+        after_image: afterImage,
+        before_image_name: beforeImageName,
+        after_image_name: afterImageName
       };
     });
     
@@ -1569,20 +1628,20 @@ app.post('/api/admin/metamorphoses', verifyToken, express.json(), async (req, re
       });
     }
     
-    // Znajdź URL zdjęć na podstawie nazw
-    const beforeImage = GITHUB_IMAGES.before.find(img => img.name === beforeImageName);
-    const afterImage = GITHUB_IMAGES.after.find(img => img.name === afterImageName);
+    // Tworzymy ścieżki do plików
+    const beforeImagePath = `/images/metamorphoses/before/${beforeImageName}`;
+    const afterImagePath = `/images/metamorphoses/after/${afterImageName}`;
     
-    if (!beforeImage || !afterImage) {
+    // Sprawdzamy czy pliki istnieją
+    const beforeFilePath = path.join(__dirname, '..', 'images', 'metamorphoses', 'before', beforeImageName);
+    const afterFilePath = path.join(__dirname, '..', 'images', 'metamorphoses', 'after', afterImageName);
+    
+    if (!fs.existsSync(beforeFilePath) || !fs.existsSync(afterFilePath)) {
       return res.status(400).json({
         success: false,
         message: 'Wybrane zdjęcia nie istnieją'
       });
     }
-    
-    // Pobierz URL zdjęć
-    const beforeImagePath = beforeImage.url;
-    const afterImagePath = afterImage.url;
     
     console.log('Zapisuję ścieżki do bazy danych:', { beforeImagePath, afterImagePath });
     
@@ -1591,13 +1650,21 @@ app.post('/api/admin/metamorphoses', verifyToken, express.json(), async (req, re
       [treatmentName, beforeImagePath, afterImagePath]
     );
     
+    // Tworzymy pełne URL dla odpowiedzi
+    const baseUrl = process.env.NODE_ENV === 'production' ? 
+      (process.env.BASE_URL || 'https://wiktoriabeutybrows-backend.onrender.com') : 
+      'http://localhost:3001';
+    
+    const fullBeforeUrl = `${baseUrl}${beforeImagePath}`;
+    const fullAfterUrl = `${baseUrl}${afterImagePath}`;
+    
     res.json({ 
       success: true, 
       message: 'Metamorfoza została dodana',
       metamorphosis: {
         treatmentName,
-        beforeImage: beforeImagePath,
-        afterImage: afterImagePath
+        beforeImage: fullBeforeUrl,
+        afterImage: fullAfterUrl
       }
     });
   } catch (error) {
@@ -1626,25 +1693,29 @@ app.put('/api/admin/metamorphoses/:id', verifyToken, express.json(), async (req,
     
     // Aktualizuj zdjęcia jeśli podano nowe nazwy
     if (beforeImageName) {
-      const beforeImage = GITHUB_IMAGES.before.find(img => img.name === beforeImageName);
-      if (!beforeImage) {
+      const newBeforePath = `/images/metamorphoses/before/${beforeImageName}`;
+      const beforeFilePath = path.join(__dirname, '..', 'images', 'metamorphoses', 'before', beforeImageName);
+      
+      if (!fs.existsSync(beforeFilePath)) {
         return res.status(400).json({
           success: false,
           message: 'Wybrane zdjęcie "przed" nie istnieje'
         });
       }
-      beforeImagePath = beforeImage.url;
+      beforeImagePath = newBeforePath;
     }
     
     if (afterImageName) {
-      const afterImage = GITHUB_IMAGES.after.find(img => img.name === afterImageName);
-      if (!afterImage) {
+      const newAfterPath = `/images/metamorphoses/after/${afterImageName}`;
+      const afterFilePath = path.join(__dirname, '..', 'images', 'metamorphoses', 'after', afterImageName);
+      
+      if (!fs.existsSync(afterFilePath)) {
         return res.status(400).json({
           success: false,
           message: 'Wybrane zdjęcie "po" nie istnieje'
         });
       }
-      afterImagePath = afterImage.url;
+      afterImagePath = newAfterPath;
     }
     
     console.log('Aktualizuję ścieżki w bazie danych:', { beforeImagePath, afterImagePath });
@@ -1654,14 +1725,24 @@ app.put('/api/admin/metamorphoses/:id', verifyToken, express.json(), async (req,
       [treatmentName, beforeImagePath, afterImagePath, id]
     );
     
+    // Tworzymy pełne URL dla odpowiedzi
+    const baseUrl = process.env.NODE_ENV === 'production' ? 
+      (process.env.BASE_URL || 'https://wiktoriabeutybrows-backend.onrender.com') : 
+      'http://localhost:3001';
+    
+    const fullBeforeUrl = beforeImagePath.startsWith('http') ? 
+      beforeImagePath : `${baseUrl}${beforeImagePath}`;
+    const fullAfterUrl = afterImagePath.startsWith('http') ? 
+      afterImagePath : `${baseUrl}${afterImagePath}`;
+    
     res.json({ 
       success: true, 
       message: 'Metamorfoza została zaktualizowana',
       metamorphosis: {
         id,
         treatmentName,
-        beforeImage: beforeImagePath,
-        afterImage: afterImagePath
+        beforeImage: fullBeforeUrl,
+        afterImage: fullAfterUrl
       }
     });
   } catch (error) {

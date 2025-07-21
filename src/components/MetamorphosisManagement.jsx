@@ -100,20 +100,11 @@ const MetamorphosisManagement = () => {
   };
 
   const handleEdit = (metamorphosis) => {
-    // Wyciągnij nazwy plików z pełnych URL
-    const getImageNameFromUrl = (url) => {
-      const parts = url.split('/');
-      return parts[parts.length - 1];
-    };
-    
-    const beforeImageName = getImageNameFromUrl(metamorphosis.before_image);
-    const afterImageName = getImageNameFromUrl(metamorphosis.after_image);
-    
     setEditingId(metamorphosis.id);
     setFormData({
       treatmentName: metamorphosis.treatment_name,
-      beforeImageName: beforeImageName,
-      afterImageName: afterImageName
+      beforeImageName: metamorphosis.before_image_name || '',
+      afterImageName: metamorphosis.after_image_name || ''
     });
     setShowForm(true);
   };
