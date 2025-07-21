@@ -53,6 +53,8 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
         onLogout={() => {
           localStorage.removeItem('authToken')
           localStorage.removeItem('user')
+          localStorage.removeItem('tokenExpires')
+          localStorage.removeItem('rememberMe')
           window.location.replace('/')
         }}
         onAdminClick={() => {
@@ -240,12 +242,31 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem('authToken')
     const savedUser = localStorage.getItem('user')
+    const rememberMe = localStorage.getItem('rememberMe') === 'true'
+    
     if (token && savedUser) {
-      const userData = JSON.parse(savedUser)
-      setUser(userData)
-      
-      // Nie pokazujemy automatycznie panelu admina przy starcie
-      // aby uniknąć problemu z automatycznym zamykaniem
+      // Sprawdź, czy token jest ważny
+      try {
+        // Jeśli użytkownik wybrał opcję "Zapamiętaj mnie", to automatycznie logujemy go
+        if (rememberMe) {
+          const userData = JSON.parse(savedUser)
+          setUser(userData)
+          console.log('Automatyczne logowanie z opcją "Zapamiętaj mnie"')
+        } else {
+          // Jeśli nie wybrał opcji "Zapamiętaj mnie", to usuwamy token i dane użytkownika
+          localStorage.removeItem('authToken')
+          localStorage.removeItem('user')
+          localStorage.removeItem('tokenExpires')
+          localStorage.removeItem('rememberMe')
+          console.log('Sesja wygasła - wymagane ponowne logowanie')
+        }
+      } catch (error) {
+        console.error('Błąd weryfikacji tokenu:', error)
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('user')
+        localStorage.removeItem('tokenExpires')
+        localStorage.removeItem('rememberMe')
+      }
     }
     
     // Obsługa fragmentów URL
@@ -326,6 +347,8 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
+    localStorage.removeItem('tokenExpires')
+    localStorage.removeItem('rememberMe')
     setUser(null)
     // Użyj window.location.replace zamiast window.location.href
     window.location.replace('/')

@@ -6,7 +6,8 @@ import { API_URL } from '../config'
 const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    rememberMe: false
   })
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
@@ -66,6 +67,10 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
         // Zapisz token w localStorage
         localStorage.setItem('authToken', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
+        // Zapisz informację o czasie ważności tokenu
+        localStorage.setItem('tokenExpires', data.expiresIn || '24h')
+        // Zapisz informację o opcji "Zapamiętaj mnie"
+        localStorage.setItem('rememberMe', formData.rememberMe.toString())
         console.log('Zalogowano pomyślnie, przekierowuję...');
         onLogin(data.user);
       } else {
@@ -80,10 +85,10 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
   }
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value, type, checked } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }))
     // Usuń błąd dla tego pola
     if (errors[name]) {
@@ -176,6 +181,21 @@ const LoginForm = ({ onLogin, onBack, onRegisterClick }) => {
             {errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password}</p>
             )}
+          </div>
+          
+          {/* Zapamiętaj mnie */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="rememberMe"
+              name="rememberMe"
+              checked={formData.rememberMe}
+              onChange={handleChange}
+              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
+              Zapamiętaj mnie
+            </label>
           </div>
 
           {/* Przyciski */}

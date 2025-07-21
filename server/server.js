@@ -296,8 +296,8 @@ app.post('/api/register', async (req, res) => {
 // LOGOWANIE
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    console.log('Próba logowania:', email);
+    const { email, password, rememberMe } = req.body;
+    console.log('Próba logowania:', email, 'Zapamiętaj mnie:', rememberMe);
 
     try {
       const [users] = await db.execute(
@@ -333,6 +333,10 @@ app.post('/api/login', async (req, res) => {
           });
         }
 
+        // Ustawiamy czas ważności tokenu w zależności od opcji "Zapamiętaj mnie"
+        const expiresIn = rememberMe ? '30d' : '24h';
+        console.log('Czas ważności tokenu:', expiresIn);
+
         const token = jwt.sign(
           { 
             id: user.id,
@@ -342,7 +346,7 @@ app.post('/api/login', async (req, res) => {
             lastName: user.last_name
           },
           JWT_SECRET,
-          { expiresIn: '24h' }
+          { expiresIn }
         );
 
         return res.json({
@@ -355,7 +359,8 @@ app.post('/api/login', async (req, res) => {
             role: user.role,
             firstName: user.first_name,
             lastName: user.last_name
-          }
+          },
+          expiresIn
         });
       }
 
@@ -377,6 +382,10 @@ app.post('/api/login', async (req, res) => {
           });
         }
 
+        // Ustawiamy czas ważności tokenu w zależności od opcji "Zapamiętaj mnie"
+        const expiresIn = rememberMe ? '30d' : '24h';
+        console.log('Czas ważności tokenu:', expiresIn);
+
         const token = jwt.sign(
           { 
             id: user.id,
@@ -386,7 +395,7 @@ app.post('/api/login', async (req, res) => {
             lastName: user.last_name
           },
           JWT_SECRET,
-          { expiresIn: '24h' }
+          { expiresIn }
         );
 
         res.json({
@@ -399,7 +408,8 @@ app.post('/api/login', async (req, res) => {
             role: user.role,
             firstName: user.first_name,
             lastName: user.last_name
-          }
+          },
+          expiresIn
         });
       } catch (bcryptError) {
         console.error('Błąd bcrypt:', bcryptError);
