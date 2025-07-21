@@ -93,20 +93,39 @@ const UserManagement = () => {
     setLoadingPhones(true)
     try {
       const token = localStorage.getItem('authToken')
+      console.log('Pobieranie numerów telefonów...')
       const response = await fetch(`${API_URL}/api/admin/phone-numbers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
 
+      console.log('Status odpowiedzi:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
-        setPhoneNumbers(data.phoneNumbers)
-        setFormattedPhoneNumbers(data.formattedPhoneNumbers)
-        setPhoneCount(data.count)
+        console.log('Otrzymane dane:', data)
+        
+        if (data.success) {
+          setPhoneNumbers(data.phoneNumbers || [])
+          setFormattedPhoneNumbers(data.formattedPhoneNumbers || '')
+          setPhoneCount(data.count || 0)
+          
+          if (data.phoneNumbers && data.phoneNumbers.length === 0) {
+            alert('Nie znaleziono żadnych numerów telefonów')
+          }
+        } else {
+          console.error('Błąd w odpowiedzi:', data.message)
+          alert(`Błąd: ${data.message || 'Nie udało się pobrać numerów telefonów'}`)
+        }
+      } else {
+        const errorText = await response.text()
+        console.error('Błąd odpowiedzi:', response.status, errorText)
+        alert(`Błąd serwera: ${response.status}`)
       }
     } catch (error) {
       console.error('Błąd pobierania numerów telefonów:', error)
+      alert(`Błąd połączenia: ${error.message}`)
     } finally {
       setLoadingPhones(false)
     }
