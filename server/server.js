@@ -162,6 +162,67 @@ async function initializeDatabase() {
     const success = await dbAdapter.runInitScript();
     if (success) {
       console.log('Baza danych została zainicjalizowana pomyślnie');
+      
+      // Dodajemy kolumnę total_price do tabeli appointments, jeśli nie istnieje
+      try {
+        if (dbType === 'postgres') {
+          // Sprawdzamy czy kolumna istnieje
+          const [columnCheck] = await db.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'appointments' AND column_name = 'total_price'"
+          );
+          
+          if (columnCheck.length === 0) {
+            await db.execute(
+              "ALTER TABLE appointments ADD COLUMN total_price DECIMAL(10,2) DEFAULT 0"
+            );
+            console.log('Dodano kolumnę total_price do tabeli appointments');
+          }
+        } else {
+          // MySQL
+          const [columnCheck] = await db.execute(
+            "SELECT COUNT(*) as count FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'appointments' AND column_name = 'total_price'"
+          );
+          
+          if (columnCheck[0].count === 0) {
+            await db.execute(
+              "ALTER TABLE appointments ADD COLUMN total_price DECIMAL(10,2) DEFAULT 0"
+            );
+            console.log('Dodano kolumnę total_price do tabeli appointments');
+          }
+        }
+      } catch (alterError) {
+        console.error('Błąd dodawania kolumny total_price:', alterError);
+      }
+      
+      // Tworzymy tabelę appointment_services, jeśli nie istnieje
+      try {
+        if (dbType === 'postgres') {
+          await db.execute(`
+            CREATE TABLE IF NOT EXISTS appointment_services (
+              id SERIAL PRIMARY KEY,
+              appointment_id INTEGER NOT NULL,
+              service_id INTEGER,
+              service_name VARCHAR(255) NOT NULL,
+              price DECIMAL(10,2) NOT NULL,
+              FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+            )
+          `);
+        } else {
+          await db.execute(`
+            CREATE TABLE IF NOT EXISTS appointment_services (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              appointment_id INT NOT NULL,
+              service_id INT,
+              service_name VARCHAR(255) NOT NULL,
+              price DECIMAL(10,2) NOT NULL,
+              FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+            )
+          `);
+        }
+        console.log('Tabela appointment_services została utworzona lub już istnieje');
+      } catch (tableError) {
+        console.error('Błąd tworzenia tabeli appointment_services:', tableError);
+      }
     } else {
       console.error('Błąd inicjalizacji bazy danych');
     }
@@ -386,10 +447,10 @@ app.get('/api/user/appointments', verifyToken, async (req, res) => {
 // UMAWIANIE WIZYTY
 app.post('/api/book-appointment', verifyToken, async (req, res) => {
   try {
-    const { date, time, notes } = req.body;
+    const { date, time, notes, services, totalPrice } = req.body;
     const userId = req.user.id;
     
-    console.log('Próba rezerwacji terminu:', { date, time, userId });
+    console.log('Próba rezerwacji terminu:', { date, time, userId, services });
     
     // Walidacja formatu daty
     if (!date || !time) {
@@ -492,21 +553,72 @@ app.post('/api/book-appointment', verifyToken, async (req, res) => {
     }
 
     // Dodajemy nową rezerwację
+    let appointmentId;
     try {
       if (dbType === 'postgres') {
         console.log('Używam zapytania PostgreSQL dla dodania rezerwacji');
-        await db.execute(
-          "INSERT INTO appointments (user_id, date, time, notes) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4)",
-          [userId, formattedDate, time, notes || '']
+        const [result] = await db.execute(
+          "INSERT INTO appointments (user_id, date, time, notes, total_price) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4, $5) RETURNING id",
+          [userId, formattedDate, time, notes || '', totalPrice || 0]
         );
+        appointmentId = result[0].id;
       } else {
         console.log('Używam zapytania MySQL dla dodania rezerwacji');
-        await db.execute(
-          'INSERT INTO appointments (user_id, date, time, notes) VALUES (?, ?, ?, ?)',
-          [userId, formattedDate, time, notes || '']
+        const [result] = await db.execute(
+          'INSERT INTO appointments (user_id, date, time, notes, total_price) VALUES (?, ?, ?, ?, ?)',
+          [userId, formattedDate, time, notes || '', totalPrice || 0]
         );
+        appointmentId = result.insertId;
       }
-      console.log('Rezerwacja dodana pomyślnie');
+      console.log('Rezerwacja dodana pomyślnie, ID:', appointmentId);
+      
+      // Dodajemy wybrane usługi do rezerwacji
+      if (services && Array.isArray(services) && services.length > 0) {
+        console.log('Dodawanie wybranych usług do rezerwacji:', services);
+        
+        // Sprawdzamy czy tabela appointment_services istnieje, jeśli nie, tworzymy ją
+        try {
+          if (dbType === 'postgres') {
+            await db.execute(`
+              CREATE TABLE IF NOT EXISTS appointment_services (
+                id SERIAL PRIMARY KEY,
+                appointment_id INTEGER NOT NULL,
+                service_id INTEGER,
+                service_name VARCHAR(255) NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+              )
+            `);
+          } else {
+            await db.execute(`
+              CREATE TABLE IF NOT EXISTS appointment_services (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                appointment_id INT NOT NULL,
+                service_id INT,
+                service_name VARCHAR(255) NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+              )
+            `);
+          }
+        } catch (tableError) {
+          console.error('Błąd tworzenia tabeli appointment_services:', tableError);
+          // Kontynuujemy mimo błędu, może tabela już istnieje
+        }
+        
+        // Dodajemy każdą usługę do tabeli appointment_services
+        for (const service of services) {
+          try {
+            await db.execute(
+              'INSERT INTO appointment_services (appointment_id, service_id, service_name, price) VALUES (?, ?, ?, ?)',
+              [appointmentId, service.id || null, service.name, service.price || 0]
+            );
+          } catch (serviceError) {
+            console.error('Błąd dodawania usługi do rezerwacji:', serviceError);
+            // Kontynuujemy mimo błędu, aby dodać pozostałe usługi
+          }
+        }
+      }
     } catch (dbError) {
       console.error('Błąd dodawania rezerwacji:', dbError);
       return res.status(500).json({
@@ -947,7 +1059,7 @@ app.get('/api/admin/appointments', verifyToken, async (req, res) => {
 
     const { date, search } = req.query;
     let query = `
-      SELECT a.id, a.date, a.time, a.notes, a.status, a.created_at,
+      SELECT a.id, a.date, a.time, a.notes, a.status, a.created_at, a.total_price,
              u.first_name, u.last_name, u.email, u.phone,
              CASE WHEN u.password_hash = 'manual_account' THEN 'manual' ELSE 'registered' END as account_type
       FROM appointments a
@@ -969,6 +1081,43 @@ app.get('/api/admin/appointments', verifyToken, async (req, res) => {
     query += ' ORDER BY a.date, a.time';
     
     const [appointments] = await db.execute(query, params);
+    
+    // Pobierz usługi dla każdej wizyty
+    for (const appointment of appointments) {
+      try {
+        // Sprawdzamy czy tabela appointment_services istnieje
+        let tableExists = false;
+        try {
+          if (dbType === 'postgres') {
+            const [result] = await db.execute(
+              "SELECT to_regclass('public.appointment_services') IS NOT NULL as exists"
+            );
+            tableExists = result[0].exists;
+          } else {
+            const [result] = await db.execute(
+              "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'appointment_services'"
+            );
+            tableExists = result[0].count > 0;
+          }
+        } catch (tableError) {
+          console.error('Błąd sprawdzania istnienia tabeli appointment_services:', tableError);
+          tableExists = false;
+        }
+        
+        if (tableExists) {
+          const [services] = await db.execute(
+            'SELECT service_id, service_name, price FROM appointment_services WHERE appointment_id = ?',
+            [appointment.id]
+          );
+          appointment.services = services;
+        } else {
+          appointment.services = [];
+        }
+      } catch (servicesError) {
+        console.error(`Błąd pobierania usług dla wizyty ID ${appointment.id}:`, servicesError);
+        appointment.services = [];
+      }
+    }
     
     res.json({ appointments });
   } catch (error) {

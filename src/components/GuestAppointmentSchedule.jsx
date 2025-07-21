@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, Clock, Phone, Mail, Scissors } from 'lucide-react'
+import { Calendar, Clock, Phone, Mail, Scissors, Check, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react'
 import { API_URL } from '../config'
 
 const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
@@ -9,6 +9,10 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [services, setServices] = useState([])
   const [loadingServices, setLoadingServices] = useState(false)
+  const [categories, setCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedServices, setSelectedServices] = useState([])
+  const [expandedCategories, setExpandedCategories] = useState({})
 
   useEffect(() => {
     if (selectedDate) {
@@ -32,15 +36,27 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
         console.log('Endpoint wymaga autoryzacji lub nie istnieje, używamy domyślnych danych')
         // Ustawiamy domyślne usługi
         const defaultServices = [
-          { name: 'Manicure klasyczny', price: 80.00 },
-          { name: 'Manicure hybrydowy', price: 120.00 },
-          { name: 'Pedicure klasyczny', price: 100.00 },
-          { name: 'Oczyszczanie twarzy', price: 150.00 },
-          { name: 'Peeling chemiczny', price: 200.00 },
-          { name: 'Laminacja brwi', price: 80.00 },
-          { name: 'Mezoterapia igłowa', price: 300.00 }
+          { id: 1, name: 'Manicure klasyczny', price: 80.00, category: 'Manicure' },
+          { id: 2, name: 'Manicure hybrydowy', price: 120.00, category: 'Manicure' },
+          { id: 3, name: 'Pedicure klasyczny', price: 100.00, category: 'Pedicure' },
+          { id: 4, name: 'Oczyszczanie twarzy', price: 150.00, category: 'Pielęgnacja twarzy' },
+          { id: 5, name: 'Peeling chemiczny', price: 200.00, category: 'Pielęgnacja twarzy' },
+          { id: 6, name: 'Laminacja brwi', price: 80.00, category: 'Stylizacja brwi' },
+          { id: 7, name: 'Mezoterapia igłowa', price: 300.00, category: 'Medycyna estetyczna' }
         ]
         setServices(defaultServices)
+        
+        // Grupujemy usługi według kategorii
+        const uniqueCategories = [...new Set(defaultServices.map(service => service.category))]
+        setCategories(uniqueCategories)
+        
+        // Inicjalizujemy stan rozwinięcia kategorii
+        const initialExpandedState = {}
+        uniqueCategories.forEach(category => {
+          initialExpandedState[category] = false
+        })
+        setExpandedCategories(initialExpandedState)
+        
         return
       }
       
@@ -57,19 +73,43 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       }
       
       setServices(servicesList)
+      
+      // Grupujemy usługi według kategorii
+      const uniqueCategories = [...new Set(servicesList.map(service => service.category))]
+      setCategories(uniqueCategories)
+      
+      // Inicjalizujemy stan rozwinięcia kategorii
+      const initialExpandedState = {}
+      uniqueCategories.forEach(category => {
+        initialExpandedState[category] = false
+      })
+      setExpandedCategories(initialExpandedState)
+      
     } catch (error) {
       console.error('Błąd pobierania usług:', error)
       // Ustawiamy domyślne usługi w przypadku błędu
       const defaultServices = [
-        { name: 'Manicure klasyczny', price: 80.00 },
-        { name: 'Manicure hybrydowy', price: 120.00 },
-        { name: 'Pedicure klasyczny', price: 100.00 },
-        { name: 'Oczyszczanie twarzy', price: 150.00 },
-        { name: 'Peeling chemiczny', price: 200.00 },
-        { name: 'Laminacja brwi', price: 80.00 },
-        { name: 'Mezoterapia igłowa', price: 300.00 }
+        { id: 1, name: 'Manicure klasyczny', price: 80.00, category: 'Manicure' },
+        { id: 2, name: 'Manicure hybrydowy', price: 120.00, category: 'Manicure' },
+        { id: 3, name: 'Pedicure klasyczny', price: 100.00, category: 'Pedicure' },
+        { id: 4, name: 'Oczyszczanie twarzy', price: 150.00, category: 'Pielęgnacja twarzy' },
+        { id: 5, name: 'Peeling chemiczny', price: 200.00, category: 'Pielęgnacja twarzy' },
+        { id: 6, name: 'Laminacja brwi', price: 80.00, category: 'Stylizacja brwi' },
+        { id: 7, name: 'Mezoterapia igłowa', price: 300.00, category: 'Medycyna estetyczna' }
       ]
       setServices(defaultServices)
+      
+      // Grupujemy usługi według kategorii
+      const uniqueCategories = [...new Set(defaultServices.map(service => service.category))]
+      setCategories(uniqueCategories)
+      
+      // Inicjalizujemy stan rozwinięcia kategorii
+      const initialExpandedState = {}
+      uniqueCategories.forEach(category => {
+        initialExpandedState[category] = false
+      })
+      setExpandedCategories(initialExpandedState)
+      
     } finally {
       setLoadingServices(false)
     }
@@ -142,6 +182,61 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       day: 'numeric'
     })
   }
+  
+  // Funkcja do przełączania rozwinięcia kategorii
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }))
+  }
+  
+  // Funkcja do dodawania/usuwania usługi z wybranych
+  const toggleService = (service) => {
+    setSelectedServices(prev => {
+      const isSelected = prev.some(s => s.id === service.id)
+      if (isSelected) {
+        return prev.filter(s => s.id !== service.id)
+      } else {
+        return [...prev, service]
+      }
+    })
+  }
+  
+  // Funkcja do obliczania łącznej ceny wybranych usług
+  const calculateTotalPrice = () => {
+    return selectedServices.reduce((sum, service) => sum + parseFloat(service.price), 0)
+  }
+  
+  // Funkcja sprawdzająca czy usługa jest wybrana
+  const isServiceSelected = (serviceId) => {
+    return selectedServices.some(service => service.id === serviceId)
+  }
+  
+  // Funkcja do przełączania rozwinięcia kategorii
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }))
+  }
+  
+  // Funkcja do dodawania/usuwania usługi z wybranych
+  const toggleService = (service) => {
+    setSelectedServices(prev => {
+      const isSelected = prev.some(s => s.id === service.id)
+      if (isSelected) {
+        return prev.filter(s => s.id !== service.id)
+      } else {
+        return [...prev, service]
+      }
+    })
+  }
+  
+  // Funkcja do obliczania łącznej ceny wybranych usług
+  const calculateTotalPrice = () => {
+    return selectedServices.reduce((sum, service) => sum + service.price, 0)
+  }
 
   if (!selectedDate) {
     return (
@@ -189,23 +284,80 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       
       {/* Sekcja z usługami */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-        <h3 className="font-semibold text-green-800 mb-2 flex items-center">
+        <h3 className="font-semibold text-green-800 mb-4 flex items-center">
           <Scissors className="w-4 h-4 mr-2" />
-          Nasza oferta
+          Wybierz usługi
         </h3>
         
         {loadingServices ? (
           <div className="flex justify-center py-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
           </div>
-        ) : services && services.length > 0 ? (
-          <div className="grid grid-cols-1 gap-2">
-            {services.map((service, index) => (
-              <div key={index} className="flex justify-between items-center py-1 border-b border-green-100 last:border-0">
-                <span className="text-sm text-green-800">{service.name}</span>
-                <span className="text-sm font-semibold text-green-800">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}</span>
+        ) : categories && categories.length > 0 ? (
+          <div className="space-y-4">
+            {/* Kategorie usług */}
+            {categories.map((category) => (
+              <div key={category} className="border border-green-200 rounded-lg overflow-hidden">
+                {/* Nagłówek kategorii */}
+                <button 
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex justify-between items-center p-3 bg-green-100 hover:bg-green-200 transition-colors"
+                >
+                  <span className="font-medium text-green-800">{category}</span>
+                  {expandedCategories[category] ? 
+                    <ChevronUp className="w-5 h-5 text-green-700" /> : 
+                    <ChevronDown className="w-5 h-5 text-green-700" />}
+                </button>
+                
+                {/* Lista usług w kategorii */}
+                {expandedCategories[category] && (
+                  <div className="p-3 space-y-2">
+                    {services
+                      .filter(service => service.category === category)
+                      .map((service) => (
+                        <div 
+                          key={service.id} 
+                          className={`flex justify-between items-center p-2 rounded-lg cursor-pointer transition-colors ${isServiceSelected(service.id) ? 'bg-green-200' : 'hover:bg-green-100'}`}
+                          onClick={() => toggleService(service)}
+                        >
+                          <div className="flex items-center">
+                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-2 ${isServiceSelected(service.id) ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+                              {isServiceSelected(service.id) && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className="text-sm text-green-800">{service.name}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-green-800">
+                            {typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}
+                          </span>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
             ))}
+            
+            {/* Podsumowanie wybranych usług */}
+            {selectedServices.length > 0 && (
+              <div className="mt-4 p-3 bg-green-100 rounded-lg">
+                <h4 className="font-medium text-green-800 mb-2 flex items-center">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Wybrane usługi ({selectedServices.length})
+                </h4>
+                <div className="space-y-1">
+                  {selectedServices.map((service) => (
+                    <div key={service.id} className="flex justify-between text-sm">
+                      <span>{service.name}</span>
+                      <span className="font-medium">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-green-300 mt-2 pt-2 flex justify-between font-bold text-green-800">
+                    <span>Razem:</span>
+                    <span>{calculateTotalPrice().toFixed(2)} zł</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-green-700 py-1">Brak dostępnych usług</p>
