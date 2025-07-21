@@ -148,6 +148,9 @@ async function connectDB() {
     }
     
     db = dbAdapter.getDb();
+    // Pobierz typ bazy danych z adaptera
+    dbType = DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' ? 'postgres' : 'mysql';
+    console.log('Typ bazy danych:', dbType);
     return true;
   } catch (error) {
     console.error('Błąd połączenia z bazą danych:', error.message);
@@ -275,7 +278,6 @@ app.get('/api/admin/phone-numbers', verifyToken, async (req, res) => {
       // Awaryjnie pobieramy wszystkie rekordy i filtrujemy je w kodzie
       [users] = await db.execute('SELECT phone FROM users');
       console.log('Wykonano awaryjne zapytanie');
-    }phone FROM users WHERE phone IS NOT NULL AND phone != ""');
     }
     
     // Wyciągamy same numery telefonów
@@ -302,20 +304,6 @@ app.get('/api/admin/phone-numbers', verifyToken, async (req, res) => {
       });
     }
     
-    res.json({
-      success: true,
-      phoneNumbers,
-      formattedPhoneNumbers: phoneNumbers.join(', '),
-      count: phoneNumbers.length
-    });
-  } catch (error) {
-    console.error('Błąd pobierania numerów telefonów:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Błąd serwera podczas pobierania numerów telefonów'
-    });
-  }
-});
     res.json({
       success: true,
       phoneNumbers,
@@ -383,10 +371,18 @@ app.post('/api/login', async (req, res) => {
     console.log('Próba logowania:', email, 'Zapamiętaj mnie:', rememberMe);
 
     try {
-      const [users] = await db.execute(
-        'SELECT id, first_name, last_name, email, password_hash, is_active, role FROM users WHERE email = $1',
-        [email]
-      );
+      let users;
+      if (dbType === 'postgres') {
+        [users] = await db.execute(
+          'SELECT id, first_name, last_name, email, password_hash, is_active, role FROM users WHERE email = $1',
+          [email]
+        );
+      } else {
+        [users] = await db.execute(
+          'SELECT id, first_name, last_name, email, password_hash, is_active, role FROM users WHERE email = ?',
+          [email]
+        );
+      }
 
       console.log('Znaleziono użytkowników:', users ? users.length : 0);
 
@@ -1035,19 +1031,37 @@ app.get('/api/admin/slots/:date', verifyToken, async (req, res) => {
 
     const { date } = req.params;
     
-    const [allSlots] = await db.execute(
-      'SELECT time FROM available_slots WHERE date = ? ORDER BY time',
-      [date]
-    );
+    let allSlots, bookedAppointments;
     
-    const [bookedAppointments] = await db.execute(
-      `SELECT a.time, u.first_name, u.last_name 
-       FROM appointments a 
-       JOIN users u ON a.user_id = u.id 
-       WHERE a.date = ? AND a.status != 'cancelled' 
-       ORDER BY a.time`,
-      [date]
-    );
+    if (dbType === 'postgres') {
+      [allSlots] = await db.execute(
+        "SELECT time FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 ORDER BY time",
+        [date]
+      );
+      
+      [bookedAppointments] = await db.execute(
+        `SELECT a.time, u.first_name, u.last_name 
+         FROM appointments a 
+         JOIN users u ON a.user_id = u.id 
+         WHERE TO_CHAR(a.date, 'YYYY-MM-DD') = $1 AND a.status != 'cancelled' 
+         ORDER BY a.time`,
+        [date]
+      );
+    } else {
+      [allSlots] = await db.execute(
+        'SELECT time FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? ORDER BY time',
+        [date]
+      );
+      
+      [bookedAppointments] = await db.execute(
+        `SELECT a.time, u.first_name, u.last_name 
+         FROM appointments a 
+         JOIN users u ON a.user_id = u.id 
+         WHERE DATE_FORMAT(a.date, "%Y-%m-%d") = ? AND a.status != 'cancelled' 
+         ORDER BY a.time`,
+        [date]
+      );
+    }
     
     const bookedTimes = bookedAppointments.map(apt => apt.time);
     const availableSlots = allSlots
@@ -1132,10 +1146,17 @@ app.delete('/api/admin/slots/:date/:time', verifyToken, async (req, res) => {
 
     const { date, time } = req.params;
     
-    await db.execute(
-      'DELETE FROM available_slots WHERE date = ? AND time = ?',
-      [date, time]
-    );
+    if (dbType === 'postgres') {
+      await db.execute(
+        "DELETE FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND time = $2",
+        [date, time]
+      );
+    } else {
+      await db.execute(
+        'DELETE FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND time = ?',
+        [date, time]
+      );
+    }
     
     res.json({ success: true });
   } catch (error) {
@@ -1151,24 +1172,46 @@ app.get('/api/admin/appointments', verifyToken, async (req, res) => {
     }
 
     const { date, search } = req.query;
-    let query = `
-      SELECT a.id, a.date, a.time, a.notes, a.status, a.created_at, a.total_price,
-             u.first_name, u.last_name, u.email, u.phone,
-             CASE WHEN u.password_hash = 'manual_account' THEN 'manual' ELSE 'registered' END as account_type
-      FROM appointments a
-      JOIN users u ON a.user_id = u.id
-      WHERE 1=1
-    `;
-    const params = [];
+    let query, params = [];
     
-    if (date) {
-      query += ' AND a.date = ?';
-      params.push(date);
-    }
-    
-    if (search) {
-      query += ' AND (u.first_name LIKE ? OR u.last_name LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+    if (dbType === 'postgres') {
+      query = `
+        SELECT a.id, a.date, a.time, a.notes, a.status, a.created_at, a.total_price,
+               u.first_name, u.last_name, u.email, u.phone,
+               CASE WHEN u.password_hash = 'manual_account' THEN 'manual' ELSE 'registered' END as account_type
+        FROM appointments a
+        JOIN users u ON a.user_id = u.id
+        WHERE 1=1
+      `;
+      
+      if (date) {
+        query += " AND TO_CHAR(a.date, 'YYYY-MM-DD') = $" + (params.length + 1);
+        params.push(date);
+      }
+      
+      if (search) {
+        query += " AND (u.first_name ILIKE $" + (params.length + 1) + " OR u.last_name ILIKE $" + (params.length + 2) + ")";
+        params.push(`%${search}%`, `%${search}%`);
+      }
+    } else {
+      query = `
+        SELECT a.id, a.date, a.time, a.notes, a.status, a.created_at, a.total_price,
+               u.first_name, u.last_name, u.email, u.phone,
+               CASE WHEN u.password_hash = 'manual_account' THEN 'manual' ELSE 'registered' END as account_type
+        FROM appointments a
+        JOIN users u ON a.user_id = u.id
+        WHERE 1=1
+      `;
+      
+      if (date) {
+        query += ' AND DATE_FORMAT(a.date, "%Y-%m-%d") = ?';
+        params.push(date);
+      }
+      
+      if (search) {
+        query += ' AND (u.first_name LIKE ? OR u.last_name LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`);
+      }
     }
     
     query += ' ORDER BY a.date, a.time';
@@ -1302,10 +1345,18 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
     }
 
     // Sprawdź czy termin jest dostępny
-    const [availableSlot] = await db.execute(
-      'SELECT id FROM available_slots WHERE date = ? AND time = ?',
-      [date, time]
-    );
+    let availableSlot;
+    if (dbType === 'postgres') {
+      [availableSlot] = await db.execute(
+        "SELECT id FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND time = $2",
+        [date, time]
+      );
+    } else {
+      [availableSlot] = await db.execute(
+        'SELECT id FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND time = ?',
+        [date, time]
+      );
+    }
 
     if (availableSlot.length === 0) {
       return res.status(400).json({
@@ -1315,10 +1366,18 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
     }
 
     // Sprawdź czy termin nie jest już zarezerwowany
-    const [existingAppointment] = await db.execute(
-      'SELECT id FROM appointments WHERE date = ? AND time = ? AND status != "cancelled"',
-      [date, time]
-    );
+    let existingAppointment;
+    if (dbType === 'postgres') {
+      [existingAppointment] = await db.execute(
+        "SELECT id FROM appointments WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND time = $2 AND status != 'cancelled'",
+        [date, time]
+      );
+    } else {
+      [existingAppointment] = await db.execute(
+        'SELECT id FROM appointments WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND time = ? AND status != "cancelled"',
+        [date, time]
+      );
+    }
 
     if (existingAppointment.length > 0) {
       return res.status(409).json({
@@ -1329,27 +1388,52 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
 
     // Utwórz tymczasowego użytkownika lub znajdź istniejącego
     let userId;
-    const [existingUser] = await db.execute(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
-    );
+    let existingUser;
+    
+    if (dbType === 'postgres') {
+      [existingUser] = await db.execute(
+        'SELECT id FROM users WHERE email = $1',
+        [email]
+      );
+    } else {
+      [existingUser] = await db.execute(
+        'SELECT id FROM users WHERE email = ?',
+        [email]
+      );
+    }
 
     if (existingUser.length > 0) {
       userId = existingUser[0].id;
     } else {
       // Utwórz użytkownika dodanego ręcznie
-      const [result] = await db.execute(
-        'INSERT INTO users (first_name, last_name, phone, email, password_hash, is_active, role) VALUES (?, ?, ?, ?, "manual_account", TRUE, "user")',
-        [firstName, lastName, phone, email]
-      );
-      userId = result.insertId;
+      let result;
+      if (dbType === 'postgres') {
+        [result] = await db.execute(
+          "INSERT INTO users (first_name, last_name, phone, email, password_hash, is_active, role) VALUES ($1, $2, $3, $4, 'manual_account', TRUE, 'user') RETURNING id",
+          [firstName, lastName, phone, email]
+        );
+        userId = result[0].id;
+      } else {
+        [result] = await db.execute(
+          'INSERT INTO users (first_name, last_name, phone, email, password_hash, is_active, role) VALUES (?, ?, ?, ?, "manual_account", TRUE, "user")',
+          [firstName, lastName, phone, email]
+        );
+        userId = result.insertId;
+      }
     }
 
     // Dodaj wizytę jako potwierdzoną
-    await db.execute(
-      'INSERT INTO appointments (user_id, date, time, notes, status) VALUES (?, ?, ?, ?, "confirmed")',
-      [userId, date, time, notes || '']
-    );
+    if (dbType === 'postgres') {
+      await db.execute(
+        "INSERT INTO appointments (user_id, date, time, notes, status) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4, 'confirmed')",
+        [userId, date, time, notes || '']
+      );
+    } else {
+      await db.execute(
+        'INSERT INTO appointments (user_id, date, time, notes, status) VALUES (?, ?, ?, ?, "confirmed")',
+        [userId, date, time, notes || '']
+      );
+    }
 
     res.json({
       success: true,

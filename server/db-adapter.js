@@ -5,6 +5,7 @@ const path = require('path');
 
 // Określ typ bazy danych na podstawie zmiennej środowiskowej lub domyślnie MySQL
 const DB_TYPE = process.env.DB_TYPE || 'mysql';
+console.log('Inicjalizacja adaptera bazy danych, typ:', DB_TYPE);
 
 let db = null;
 let dbType = null;
