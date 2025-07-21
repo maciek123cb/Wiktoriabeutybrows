@@ -56,9 +56,13 @@ app.use((req, res, next) => {
 // Konfiguracja multer dla uploadów
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, 'uploads', 'metamorphoses');
+    // Tworzymy katalog uploads/metamorphoses w katalogu głównym projektu
+    // Dla Render i podobnych platform, używamy katalogu /tmp, który jest dostępny dla zapisów
+    const baseDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
+    const uploadPath = path.join(baseDir, 'uploads', 'metamorphoses');
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
+      console.log(`Utworzono katalog ${uploadPath}`);
     }
     cb(null, uploadPath);
   },
@@ -81,6 +85,54 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   }
 });
+
+// Funkcja pomocnicza do generowania ścieżki URL dla plików
+const getFileUrl = (filePath) => {
+  // Jeśli ścieżka zaczyna się od http, zakładamy że to pełny URL (np. z GitHub)
+  if (filePath.startsWith('http')) {
+    return filePath;
+  }
+  
+  // Jeśli jesteśmy w środowisku produkcyjnym, używamy pełnego URL
+  if (process.env.NODE_ENV === 'production') {
+    const baseUrl = process.env.BASE_URL || 'https://wiktoriabeutybrows-backend.onrender.com';
+    return `${baseUrl}${filePath}`;
+  }
+  // W środowisku lokalnym zwracamy ścieżkę względną
+  return filePath;
+};
+
+// Baza zdjęć dostępnych w repozytorium GitHub
+const GITHUB_IMAGES = {
+  before: [
+    {
+      name: 'przed_1.jpg',
+      url: 'https://raw.githubusercontent.com/wiktoriabeutybrows/images/main/metamorphoses/przed_1.jpg'
+    },
+    {
+      name: 'przed_2.jpg',
+      url: 'https://raw.githubusercontent.com/wiktoriabeutybrows/images/main/metamorphoses/przed_2.jpg'
+    },
+    {
+      name: 'przed_3.jpg',
+      url: 'https://raw.githubusercontent.com/wiktoriabeutybrows/images/main/metamorphoses/przed_3.jpg'
+    }
+  ],
+  after: [
+    {
+      name: 'po_1.jpg',
+      url: 'https://raw.githubusercontent.com/wiktoriabeutybrows/images/main/metamorphoses/po_1.jpg'
+    },
+    {
+      name: 'po_2.jpg',
+      url: 'https://raw.githubusercontent.com/wiktoriabeutybrows/images/main/metamorphoses/po_2.jpg'
+    },
+    {
+      name: 'po_3.jpg',
+      url: 'https://raw.githubusercontent.com/wiktoriabeutybrows/images/main/metamorphoses/po_3.jpg'
+    }
+  ]
+};
 
 // Połączenie z bazą danych
 let db;
@@ -1416,6 +1468,23 @@ app.delete('/api/admin/reviews/:id', verifyToken, async (req, res) => {
   }
 });
 
+// Endpoint do pobierania listy dostępnych zdjęć z GitHub
+app.get('/api/available-images', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Brak uprawnień' });
+    }
+    
+    res.json({
+      success: true,
+      images: GITHUB_IMAGES
+    });
+  } catch (error) {
+    console.error('Błąd pobierania listy zdjęć:', error);
+    res.status(500).json({ message: 'Błąd serwera' });
+  }
+});
+
 // ENDPOINTY DLA METAMORFOZ
 app.get('/api/metamorphoses', async (req, res) => {
   try {
@@ -1428,7 +1497,24 @@ app.get('/api/metamorphoses', async (req, res) => {
     }
     
     const [metamorphoses] = await db.execute(query);
-    res.json({ metamorphoses });
+    
+    // Upewniamy się, że ścieżki do zdjęć są pełnymi URL
+    const processedMetamorphoses = metamorphoses.map(item => {
+      // Jeśli ścieżka nie zaczyna się od http, dodajemy pełny URL
+      const beforeImage = item.before_image.startsWith('http') ? 
+        item.before_image : getFileUrl(item.before_image);
+      
+      const afterImage = item.after_image.startsWith('http') ? 
+        item.after_image : getFileUrl(item.after_image);
+      
+      return {
+        ...item,
+        before_image: beforeImage,
+        after_image: afterImage
+      };
+    });
+    
+    res.json({ metamorphoses: processedMetamorphoses });
   } catch (error) {
     console.error('Błąd pobierania metamorfoz:', error);
     res.status(500).json({ message: 'Błąd serwera' });
@@ -1444,51 +1530,90 @@ app.get('/api/admin/metamorphoses', verifyToken, async (req, res) => {
     const [metamorphoses] = await db.execute(
       'SELECT * FROM metamorphoses ORDER BY created_at DESC'
     );
-    res.json({ metamorphoses });
+    
+    // Upewniamy się, że ścieżki do zdjęć są pełnymi URL
+    const processedMetamorphoses = metamorphoses.map(item => {
+      // Jeśli ścieżka nie zaczyna się od http, dodajemy pełny URL
+      const beforeImage = item.before_image.startsWith('http') ? 
+        item.before_image : getFileUrl(item.before_image);
+      
+      const afterImage = item.after_image.startsWith('http') ? 
+        item.after_image : getFileUrl(item.after_image);
+      
+      return {
+        ...item,
+        before_image: beforeImage,
+        after_image: afterImage
+      };
+    });
+    
+    res.json({ metamorphoses: processedMetamorphoses });
   } catch (error) {
     console.error('Błąd pobierania metamorfoz:', error);
     res.status(500).json({ message: 'Błąd serwera' });
   }
 });
 
-app.post('/api/admin/metamorphoses', verifyToken, upload.fields([{ name: 'beforeImage' }, { name: 'afterImage' }]), async (req, res) => {
+app.post('/api/admin/metamorphoses', verifyToken, express.json(), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Brak uprawnień' });
     }
     
-    const { treatmentName } = req.body;
+    const { treatmentName, beforeImageName, afterImageName } = req.body;
     
-    if (!treatmentName || !req.files.beforeImage || !req.files.afterImage) {
+    if (!treatmentName || !beforeImageName || !afterImageName) {
       return res.status(400).json({
         success: false,
         message: 'Wszystkie pola są wymagane'
       });
     }
     
-    const beforeImagePath = '/uploads/metamorphoses/' + req.files.beforeImage[0].filename;
-    const afterImagePath = '/uploads/metamorphoses/' + req.files.afterImage[0].filename;
+    // Znajdź URL zdjęć na podstawie nazw
+    const beforeImage = GITHUB_IMAGES.before.find(img => img.name === beforeImageName);
+    const afterImage = GITHUB_IMAGES.after.find(img => img.name === afterImageName);
+    
+    if (!beforeImage || !afterImage) {
+      return res.status(400).json({
+        success: false,
+        message: 'Wybrane zdjęcia nie istnieją'
+      });
+    }
+    
+    // Pobierz URL zdjęć
+    const beforeImagePath = beforeImage.url;
+    const afterImagePath = afterImage.url;
+    
+    console.log('Zapisuję ścieżki do bazy danych:', { beforeImagePath, afterImagePath });
     
     await db.execute(
       'INSERT INTO metamorphoses (treatment_name, before_image, after_image) VALUES (?, ?, ?)',
       [treatmentName, beforeImagePath, afterImagePath]
     );
     
-    res.json({ success: true, message: 'Metamorfoza została dodana' });
+    res.json({ 
+      success: true, 
+      message: 'Metamorfoza została dodana',
+      metamorphosis: {
+        treatmentName,
+        beforeImage: beforeImagePath,
+        afterImage: afterImagePath
+      }
+    });
   } catch (error) {
     console.error('Błąd dodawania metamorfozy:', error);
     res.status(500).json({ success: false, message: 'Błąd serwera' });
   }
 });
 
-app.put('/api/admin/metamorphoses/:id', verifyToken, upload.fields([{ name: 'beforeImage' }, { name: 'afterImage' }]), async (req, res) => {
+app.put('/api/admin/metamorphoses/:id', verifyToken, express.json(), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Brak uprawnień' });
     }
     
     const { id } = req.params;
-    const { treatmentName } = req.body;
+    const { treatmentName, beforeImageName, afterImageName } = req.body;
     
     // Pobierz obecne dane
     const [current] = await db.execute('SELECT * FROM metamorphoses WHERE id = ?', [id]);
@@ -1499,31 +1624,46 @@ app.put('/api/admin/metamorphoses/:id', verifyToken, upload.fields([{ name: 'bef
     let beforeImagePath = current[0].before_image;
     let afterImagePath = current[0].after_image;
     
-    // Aktualizuj zdjęcia jeśli zostały przesłane
-    if (req.files.beforeImage) {
-      // Usuń stare zdjęcie
-      const oldPath = path.join(__dirname, current[0].before_image);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
+    // Aktualizuj zdjęcia jeśli podano nowe nazwy
+    if (beforeImageName) {
+      const beforeImage = GITHUB_IMAGES.before.find(img => img.name === beforeImageName);
+      if (!beforeImage) {
+        return res.status(400).json({
+          success: false,
+          message: 'Wybrane zdjęcie "przed" nie istnieje'
+        });
       }
-      beforeImagePath = '/uploads/metamorphoses/' + req.files.beforeImage[0].filename;
+      beforeImagePath = beforeImage.url;
     }
     
-    if (req.files.afterImage) {
-      // Usuń stare zdjęcie
-      const oldPath = path.join(__dirname, current[0].after_image);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
+    if (afterImageName) {
+      const afterImage = GITHUB_IMAGES.after.find(img => img.name === afterImageName);
+      if (!afterImage) {
+        return res.status(400).json({
+          success: false,
+          message: 'Wybrane zdjęcie "po" nie istnieje'
+        });
       }
-      afterImagePath = '/uploads/metamorphoses/' + req.files.afterImage[0].filename;
+      afterImagePath = afterImage.url;
     }
+    
+    console.log('Aktualizuję ścieżki w bazie danych:', { beforeImagePath, afterImagePath });
     
     await db.execute(
       'UPDATE metamorphoses SET treatment_name = ?, before_image = ?, after_image = ? WHERE id = ?',
       [treatmentName, beforeImagePath, afterImagePath, id]
     );
     
-    res.json({ success: true, message: 'Metamorfoza została zaktualizowana' });
+    res.json({ 
+      success: true, 
+      message: 'Metamorfoza została zaktualizowana',
+      metamorphosis: {
+        id,
+        treatmentName,
+        beforeImage: beforeImagePath,
+        afterImage: afterImagePath
+      }
+    });
   } catch (error) {
     console.error('Błąd aktualizacji metamorfozy:', error);
     res.status(500).json({ success: false, message: 'Błąd serwera' });
@@ -1544,17 +1684,8 @@ app.delete('/api/admin/metamorphoses/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Metamorfoza nie znaleziona' });
     }
     
-    // Usuń pliki
-    const beforePath = path.join(__dirname, metamorphosis[0].before_image);
-    const afterPath = path.join(__dirname, metamorphosis[0].after_image);
-    
-    if (fs.existsSync(beforePath)) {
-      fs.unlinkSync(beforePath);
-    }
-    if (fs.existsSync(afterPath)) {
-      fs.unlinkSync(afterPath);
-    }
-    
+    // Usuwamy tylko wpis z bazy danych, nie próbujemy usuwać plików
+    // ponieważ mogą być przechowywane w różnych miejscach
     await db.execute('DELETE FROM metamorphoses WHERE id = ?', [id]);
     
     res.json({ success: true, message: 'Metamorfoza została usunięta' });
