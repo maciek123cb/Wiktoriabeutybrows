@@ -149,6 +149,16 @@ async function runInitScript() {
       await initializeDatabase();
     }
     
+    // Sprawdź, czy tabele już istnieją i czy zawierają dane
+    const [servicesCount] = await db.execute('SELECT COUNT(*) as count FROM services');
+    const hasServices = servicesCount[0]?.count > 0;
+    
+    // Jeśli usługi już istnieją, nie wykonuj ponownie skryptu inicjalizacyjnego dla danych testowych
+    if (hasServices) {
+      console.log('Usługi już istnieją w bazie danych, pomijam dodawanie przykładowych danych');
+      return true;
+    }
+    
     const scriptPath = path.join(__dirname, dbType === 'postgres' ? 'init-postgres.sql' : 'init-database.sql');
     
     if (!fs.existsSync(scriptPath)) {
@@ -161,9 +171,18 @@ async function runInitScript() {
     
     console.log(`Wykonywanie ${statements.length} zapytań inicjalizacyjnych...`);
     
+    // Wykonaj tylko zapytania tworzące tabele, pomijając INSERT dla usług
     for (let i = 0; i < statements.length; i++) {
       const statement = statements[i].trim();
       if (statement) {
+        // Pomijaj zapytania INSERT dla usług i artykułów, jeśli tabele już istnieją
+        if ((statement.toUpperCase().includes('INSERT') && 
+            (statement.includes('services') || statement.includes('articles'))) && 
+            hasServices) {
+          console.log(`Pomijam zapytanie ${i+1}/${statements.length} (dodawanie przykładowych danych)`);
+          continue;
+        }
+        
         try {
           console.log(`Wykonywanie zapytania ${i+1}/${statements.length}`);
           // Konwersja wartości boolean w zapytaniu
