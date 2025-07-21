@@ -94,38 +94,71 @@ const UserManagement = () => {
     try {
       const token = localStorage.getItem('authToken')
       console.log('Pobieranie numerów telefonów...')
-      const response = await fetch(`${API_URL}/api/admin/phone-numbers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      console.log('Status odpowiedzi:', response.status)
       
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Otrzymane dane:', data)
+      // Dodajemy timeout do fetch
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 sekund timeout
+      
+      try {
+        const response = await fetch(`${API_URL}/api/admin/phone-numbers`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          signal: controller.signal
+        })
         
-        if (data.success) {
-          setPhoneNumbers(data.phoneNumbers || [])
-          setFormattedPhoneNumbers(data.formattedPhoneNumbers || '')
-          setPhoneCount(data.count || 0)
+        clearTimeout(timeoutId)
+        console.log('Status odpowiedzi:', response.status)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Otrzymane dane:', data)
           
-          if (data.phoneNumbers && data.phoneNumbers.length === 0) {
-            alert('Nie znaleziono żadnych numerów telefonów')
+          if (data.success) {
+            // Upewniamy się, że phoneNumbers jest tablicą
+            const phoneArray = Array.isArray(data.phoneNumbers) ? data.phoneNumbers : []
+            setPhoneNumbers(phoneArray)
+            setFormattedPhoneNumbers(data.formattedPhoneNumbers || '')
+            setPhoneCount(phoneArray.length)
+            
+            if (phoneArray.length === 0) {
+              alert('Nie znaleziono żadnych numerów telefonów')
+            } else {
+              // Pokaż komunikat o sukcesie
+              console.log(`Pobrano ${phoneArray.length} numerów telefonów`)
+            }
+          } else {
+            console.error('Błąd w odpowiedzi:', data.message)
+            alert(`Błąd: ${data.message || 'Nie udało się pobrać numerów telefonów'}`)
           }
         } else {
-          console.error('Błąd w odpowiedzi:', data.message)
-          alert(`Błąd: ${data.message || 'Nie udało się pobrać numerów telefonów'}`)
+          try {
+            const errorData = await response.json()
+            console.error('Błąd odpowiedzi (JSON):', response.status, errorData)
+            alert(`Błąd serwera: ${errorData.message || response.status}`)
+          } catch (jsonError) {
+            const errorText = await response.text()
+            console.error('Błąd odpowiedzi (tekst):', response.status, errorText)
+            alert(`Błąd serwera: ${response.status}`)
+          }
         }
-      } else {
-        const errorText = await response.text()
-        console.error('Błąd odpowiedzi:', response.status, errorText)
-        alert(`Błąd serwera: ${response.status}`)
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+        if (fetchError.name === 'AbortError') {
+          console.error('Timeout przy pobieraniu numerów telefonów')
+          alert('Przekroczono czas oczekiwania na odpowiedź serwera')
+        } else {
+          throw fetchError // Przekazujemy błąd do głównego bloku catch
+        }
       }
     } catch (error) {
       console.error('Błąd pobierania numerów telefonów:', error)
-      alert(`Błąd połączenia: ${error.message}`)
+      alert(`Błąd połączenia: ${error.message || 'Nieznany błąd'}`)
+      
+      // W przypadku błędu, resetujemy stan
+      setPhoneNumbers([])
+      setFormattedPhoneNumbers('')
+      setPhoneCount(0)
     } finally {
       setLoadingPhones(false)
     }
@@ -133,14 +166,61 @@ const UserManagement = () => {
   
   // Funkcja do kopiowania numerów telefonów do schowka
   const copyPhoneNumbers = () => {
-    navigator.clipboard.writeText(formattedPhoneNumbers)
-      .then(() => {
+    // Sprawdzamy, czy mamy co kopiować
+    if (!formattedPhoneNumbers || formattedPhoneNumbers.trim() === '') {
+      alert('Brak numerów telefonów do skopiowania')
+      return
+    }
+    
+    try {
+      // Próbujemy użyć nowoczesnego API schowka
+      navigator.clipboard.writeText(formattedPhoneNumbers)
+        .then(() => {
+          setCopied(true)
+          console.log('Numery telefonów skopiowane do schowka')
+        })
+        .catch(err => {
+          console.error('Błąd kopiowania do schowka:', err)
+          // Próbujemy alternatywnej metody
+          fallbackCopyTextToClipboard(formattedPhoneNumbers)
+        })
+    } catch (error) {
+      console.error('Błąd podczas kopiowania:', error)
+      // Próbujemy alternatywnej metody
+      fallbackCopyTextToClipboard(formattedPhoneNumbers)
+    }
+  }
+  
+  // Alternatywna metoda kopiowania do schowka
+  const fallbackCopyTextToClipboard = (text) => {
+    try {
+      // Tworzymy tymczasowy element textarea
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      
+      // Ukrywamy element
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-999999px'
+      textArea.style.top = '-999999px'
+      document.body.appendChild(textArea)
+      
+      // Zaznaczamy i kopiujemy tekst
+      textArea.focus()
+      textArea.select()
+      
+      const successful = document.execCommand('copy')
+      document.body.removeChild(textArea)
+      
+      if (successful) {
         setCopied(true)
-        console.log('Numery telefonów skopiowane do schowka')
-      })
-      .catch(err => {
-        console.error('Błąd kopiowania do schowka:', err)
-      })
+        console.log('Numery telefonów skopiowane do schowka (metoda alternatywna)')
+      } else {
+        alert('Nie udało się skopiować numerów telefonów')
+      }
+    } catch (err) {
+      console.error('Błąd kopiowania do schowka (metoda alternatywna):', err)
+      alert('Nie udało się skopiować numerów telefonów')
+    }
   }
 
   // Filtrowanie użytkowników
@@ -191,7 +271,11 @@ const UserManagement = () => {
       </div>
       
       {/* Sekcja z numerami telefonów */}
-      {phoneNumbers.length > 0 && (
+      {loadingPhones ? (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+        </div>
+      ) : phoneNumbers.length > 0 ? (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
             <h4 className="font-medium text-blue-800 flex items-center">
@@ -201,6 +285,7 @@ const UserManagement = () => {
             <button
               onClick={copyPhoneNumbers}
               className={`flex items-center space-x-2 ${copied ? 'bg-green-600' : 'bg-blue-600'} text-white px-3 py-1 rounded-lg hover:opacity-90 transition-colors text-sm`}
+              disabled={!formattedPhoneNumbers}
             >
               {copied ? (
                 <>
@@ -216,10 +301,10 @@ const UserManagement = () => {
             </button>
           </div>
           <div className="bg-white p-3 rounded border border-blue-100 text-sm text-gray-700 max-h-32 overflow-y-auto break-all">
-            {formattedPhoneNumbers}
+            {formattedPhoneNumbers || <span className="text-gray-400 italic">Brak numerów telefonów</span>}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Filtry i wyszukiwanie */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
