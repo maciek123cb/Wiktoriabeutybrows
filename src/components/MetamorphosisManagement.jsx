@@ -7,14 +7,36 @@ const MetamorphosisManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     treatmentName: '',
-    beforeImage: null,
-    afterImage: null
+    beforeImageName: '',
+    afterImageName: ''
   });
   const [loading, setLoading] = useState(false);
+  const [availableImages, setAvailableImages] = useState({
+    before: [],
+    after: []
+  });
 
   useEffect(() => {
     fetchMetamorphoses();
+    fetchAvailableImages();
   }, []);
+  
+  const fetchAvailableImages = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_URL}/api/available-images`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAvailableImages(data.images);
+      }
+    } catch (error) {
+      console.error('Błąd pobierania dostępnych obrazów:', error);
+    }
+  };
 
   const fetchMetamorphoses = async () => {
     try {
@@ -37,15 +59,11 @@ const MetamorphosisManagement = () => {
 
     try {
       const token = localStorage.getItem('authToken');
-      const formDataToSend = new FormData();
-      formDataToSend.append('treatmentName', formData.treatmentName);
-      
-      if (formData.beforeImage) {
-        formDataToSend.append('beforeImage', formData.beforeImage);
-      }
-      if (formData.afterImage) {
-        formDataToSend.append('afterImage', formData.afterImage);
-      }
+      const payload = {
+        treatmentName: formData.treatmentName,
+        beforeImageName: formData.beforeImageName,
+        afterImageName: formData.afterImageName
+      };
 
       const url = editingId 
         ? `${API_URL}/api/admin/metamorphoses/${editingId}`
@@ -56,9 +74,10 @@ const MetamorphosisManagement = () => {
       const response = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        body: formDataToSend
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();
@@ -81,11 +100,20 @@ const MetamorphosisManagement = () => {
   };
 
   const handleEdit = (metamorphosis) => {
+    // Wyciągnij nazwy plików z pełnych URL
+    const getImageNameFromUrl = (url) => {
+      const parts = url.split('/');
+      return parts[parts.length - 1];
+    };
+    
+    const beforeImageName = getImageNameFromUrl(metamorphosis.before_image);
+    const afterImageName = getImageNameFromUrl(metamorphosis.after_image);
+    
     setEditingId(metamorphosis.id);
     setFormData({
       treatmentName: metamorphosis.treatment_name,
-      beforeImage: null,
-      afterImage: null
+      beforeImageName: beforeImageName,
+      afterImageName: afterImageName
     });
     setShowForm(true);
   };
@@ -121,7 +149,7 @@ const MetamorphosisManagement = () => {
           onClick={() => {
             setShowForm(!showForm);
             setEditingId(null);
-            setFormData({ treatmentName: '', beforeImage: null, afterImage: null });
+            setFormData({ treatmentName: '', beforeImageName: '', afterImageName: '' });
           }}
           className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700"
         >
@@ -148,28 +176,58 @@ const MetamorphosisManagement = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Zdjęcie przed {editingId && '(zostaw puste, aby nie zmieniać)'}
+                  Zdjęcie przed
                 </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, beforeImage: e.target.files[0] })}
-                  className="w-full p-3 border border-gray-300 rounded-lg"
-                  required={!editingId}
-                />
+                <select
+                  value={formData.beforeImageName}
+                  onChange={(e) => setFormData({ ...formData, beforeImageName: e.target.value })}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                  required
+                >
+                  <option value="">Wybierz zdjęcie</option>
+                  {availableImages.before.map((image) => (
+                    <option key={image.name} value={image.name}>
+                      {image.name}
+                    </option>
+                  ))}
+                </select>
+                {formData.beforeImageName && (
+                  <div className="mt-2">
+                    <img 
+                      src={availableImages.before.find(img => img.name === formData.beforeImageName)?.url} 
+                      alt="Podgląd przed" 
+                      className="h-32 object-cover rounded"
+                    />
+                  </div>
+                )}
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Zdjęcie po {editingId && '(zostaw puste, aby nie zmieniać)'}
+                  Zdjęcie po
                 </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, afterImage: e.target.files[0] })}
-                  className="w-full p-3 border border-gray-300 rounded-lg"
-                  required={!editingId}
-                />
+                <select
+                  value={formData.afterImageName}
+                  onChange={(e) => setFormData({ ...formData, afterImageName: e.target.value })}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                  required
+                >
+                  <option value="">Wybierz zdjęcie</option>
+                  {availableImages.after.map((image) => (
+                    <option key={image.name} value={image.name}>
+                      {image.name}
+                    </option>
+                  ))}
+                </select>
+                {formData.afterImageName && (
+                  <div className="mt-2">
+                    <img 
+                      src={availableImages.after.find(img => img.name === formData.afterImageName)?.url} 
+                      alt="Podgląd po" 
+                      className="h-32 object-cover rounded"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -193,7 +251,7 @@ const MetamorphosisManagement = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-1">Przed:</p>
                 <img
-                  src={`${API_URL}${metamorphosis.before_image}`}
+                  src={metamorphosis.before_image}
                   alt="Przed"
                   className="w-full h-32 object-cover rounded"
                 />
@@ -201,7 +259,7 @@ const MetamorphosisManagement = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-1">Po:</p>
                 <img
-                  src={`${API_URL}${metamorphosis.after_image}`}
+                  src={metamorphosis.after_image}
                   alt="Po"
                   className="w-full h-32 object-cover rounded"
                 />

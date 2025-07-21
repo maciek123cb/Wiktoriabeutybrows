@@ -67,8 +67,8 @@ const MetamorphosisModal = ({ isOpen, onClose }) => {
                     
                     <div className="aspect-square mb-4">
                       <ReactCompareImage
-                        leftImage={`${API_URL}${metamorphosis.before_image}`}
-                        rightImage={`${API_URL}${metamorphosis.after_image}`}
+                        leftImage={metamorphosis.before_image}
+                        rightImage={metamorphosis.after_image}
                         leftImageLabel="Przed"
                         rightImageLabel="Po"
                         sliderLineColor="#ec4899"
