@@ -16,8 +16,6 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
   const [contactInfo, setContactInfo] = useState(null)
   const [services, setServices] = useState([])
   const [loadingServices, setLoadingServices] = useState(false)
-  const [services, setServices] = useState([])
-  const [loadingServices, setLoadingServices] = useState(false)
 
   // Sprawdzamy, czy użytkownik jest zalogowany
   useEffect(() => {
