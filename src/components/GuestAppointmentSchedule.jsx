@@ -258,8 +258,8 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       </div>
       
       {/* Sekcja z usługami */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-        <h3 className="font-semibold text-green-800 mb-4 flex items-center">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4 max-h-[60vh] overflow-y-auto">
+        <h3 className="font-semibold text-green-800 mb-4 flex items-center sticky top-0 bg-green-50 py-2 z-10">
           <Scissors className="w-4 h-4 mr-2" />
           Wybierz usługi
         </h3>

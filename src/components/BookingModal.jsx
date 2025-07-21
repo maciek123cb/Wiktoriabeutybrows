@@ -250,7 +250,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <motion.div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
@@ -267,7 +267,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Podsumowanie terminu */}
           <div className="bg-primary/10 rounded-lg p-4 mb-6">
             <div className="flex items-center space-x-4 text-sm">
@@ -283,8 +283,8 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
           </div>
           
           {/* Sekcja z usługami */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-green-800 mb-4 flex items-center">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 max-h-[50vh] overflow-y-auto">
+            <h3 className="font-semibold text-green-800 mb-4 flex items-center sticky top-0 bg-green-50 py-2 z-10">
               <Scissors className="w-4 h-4 mr-2" />
               Wybierz usługi
             </h3>

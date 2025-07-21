@@ -299,12 +299,12 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <motion.div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Umów wizytę</h2>
@@ -440,8 +440,8 @@ const BookingForm = ({ user, onClose, onSuccess }) => {
               </div>
 
               {/* Sekcja z usługami */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-semibold text-green-800 mb-4 flex items-center">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-h-[40vh] overflow-y-auto">
+                <h3 className="font-semibold text-green-800 mb-4 flex items-center sticky top-0 bg-green-50 py-2 z-10">
                   <Scissors className="w-4 h-4 mr-2" />
                   Wybierz usługi
                 </h3>
