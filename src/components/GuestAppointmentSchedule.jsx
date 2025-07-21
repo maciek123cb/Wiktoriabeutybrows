@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, Clock, Phone, Mail } from 'lucide-react'
+import { Calendar, Clock, Phone, Mail, Scissors } from 'lucide-react'
 import { API_URL } from '../config'
 
 const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
   const [availableSlots, setAvailableSlots] = useState([])
   const [contactInfo, setContactInfo] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [services, setServices] = useState([])
+  const [loadingServices, setLoadingServices] = useState(false)
 
   useEffect(() => {
     if (selectedDate) {
@@ -14,6 +16,64 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
       fetchContactInfo()
     }
   }, [selectedDate])
+  
+  // Pobierz listę usług przy pierwszym renderowaniu
+  useEffect(() => {
+    fetchServices()
+  }, [])
+  
+  // Funkcja do pobierania usług
+  const fetchServices = async () => {
+    setLoadingServices(true)
+    try {
+      const response = await fetch(`${API_URL}/api/services`)
+      
+      if (response.status === 401) {
+        console.log('Endpoint wymaga autoryzacji lub nie istnieje, używamy domyślnych danych')
+        // Ustawiamy domyślne usługi
+        const defaultServices = [
+          { name: 'Manicure klasyczny', price: 80.00 },
+          { name: 'Manicure hybrydowy', price: 120.00 },
+          { name: 'Pedicure klasyczny', price: 100.00 },
+          { name: 'Oczyszczanie twarzy', price: 150.00 },
+          { name: 'Peeling chemiczny', price: 200.00 },
+          { name: 'Laminacja brwi', price: 80.00 },
+          { name: 'Mezoterapia igłowa', price: 300.00 }
+        ]
+        setServices(defaultServices)
+        return
+      }
+      
+      const data = await response.json()
+      
+      // Sprawdzamy różne możliwe formaty odpowiedzi
+      let servicesList = []
+      if (data.success && Array.isArray(data.services)) {
+        servicesList = data.services
+      } else if (Array.isArray(data.services)) {
+        servicesList = data.services
+      } else if (Array.isArray(data)) {
+        servicesList = data
+      }
+      
+      setServices(servicesList)
+    } catch (error) {
+      console.error('Błąd pobierania usług:', error)
+      // Ustawiamy domyślne usługi w przypadku błędu
+      const defaultServices = [
+        { name: 'Manicure klasyczny', price: 80.00 },
+        { name: 'Manicure hybrydowy', price: 120.00 },
+        { name: 'Pedicure klasyczny', price: 100.00 },
+        { name: 'Oczyszczanie twarzy', price: 150.00 },
+        { name: 'Peeling chemiczny', price: 200.00 },
+        { name: 'Laminacja brwi', price: 80.00 },
+        { name: 'Mezoterapia igłowa', price: 300.00 }
+      ]
+      setServices(defaultServices)
+    } finally {
+      setLoadingServices(false)
+    }
+  }
 
   const fetchAvailableSlotsForDate = async (date) => {
     setIsLoading(true)
@@ -126,8 +186,33 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
           </p>
         )}
       </div>
+      
+      {/* Sekcja z usługami */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+        <h3 className="font-semibold text-green-800 mb-2 flex items-center">
+          <Scissors className="w-4 h-4 mr-2" />
+          Nasza oferta
+        </h3>
+        
+        {loadingServices ? (
+          <div className="flex justify-center py-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+          </div>
+        ) : services && services.length > 0 ? (
+          <div className="grid grid-cols-1 gap-2">
+            {services.map((service, index) => (
+              <div key={index} className="flex justify-between items-center py-1 border-b border-green-100 last:border-0">
+                <span className="text-sm text-green-800">{service.name}</span>
+                <span className="text-sm font-semibold text-green-800">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-green-700 py-1">Brak dostępnych usług</p>
+        )}
+      </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
         <h3 className="font-semibold text-blue-800 mb-2">Rezerwacja telefoniczna</h3>
         <p className="text-blue-700 mb-2">
           Aby zarezerwować wizytę, prosimy o kontakt telefoniczny.
