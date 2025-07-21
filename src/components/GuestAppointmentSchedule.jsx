@@ -212,31 +212,6 @@ const GuestAppointmentSchedule = ({ selectedDate, selectedTime }) => {
   const isServiceSelected = (serviceId) => {
     return selectedServices.some(service => service.id === serviceId)
   }
-  
-  // Funkcja do przełączania rozwinięcia kategorii
-  const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }))
-  }
-  
-  // Funkcja do dodawania/usuwania usługi z wybranych
-  const toggleService = (service) => {
-    setSelectedServices(prev => {
-      const isSelected = prev.some(s => s.id === service.id)
-      if (isSelected) {
-        return prev.filter(s => s.id !== service.id)
-      } else {
-        return [...prev, service]
-      }
-    })
-  }
-  
-  // Funkcja do obliczania łącznej ceny wybranych usług
-  const calculateTotalPrice = () => {
-    return selectedServices.reduce((sum, service) => sum + service.price, 0)
-  }
 
   if (!selectedDate) {
     return (
