@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Check, X, Trash2, Search, UserCheck, UserX } from 'lucide-react'
+import { Users, Check, X, Trash2, Search, UserCheck, UserX, Phone, Copy, CheckCircle } from 'lucide-react'
 import { API_URL } from '../config'
 
 const UserManagement = () => {
@@ -8,10 +8,23 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all') // all, active, inactive
+  const [phoneNumbers, setPhoneNumbers] = useState([])
+  const [formattedPhoneNumbers, setFormattedPhoneNumbers] = useState('')
+  const [phoneCount, setPhoneCount] = useState(0)
+  const [loadingPhones, setLoadingPhones] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     fetchUsers()
   }, [])
+  
+  // Resetuj stan skopiowania po 2 sekundach
+  useEffect(() => {
+    if (copied) {
+      const timer = setTimeout(() => setCopied(false), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [copied])
 
   const fetchUsers = async () => {
     try {
@@ -74,6 +87,42 @@ const UserManagement = () => {
       console.error('Błąd usuwania użytkownika:', error)
     }
   }
+  
+  // Funkcja do pobierania wszystkich numerów telefonów
+  const fetchPhoneNumbers = async () => {
+    setLoadingPhones(true)
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/admin/phone-numbers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setPhoneNumbers(data.phoneNumbers)
+        setFormattedPhoneNumbers(data.formattedPhoneNumbers)
+        setPhoneCount(data.count)
+      }
+    } catch (error) {
+      console.error('Błąd pobierania numerów telefonów:', error)
+    } finally {
+      setLoadingPhones(false)
+    }
+  }
+  
+  // Funkcja do kopiowania numerów telefonów do schowka
+  const copyPhoneNumbers = () => {
+    navigator.clipboard.writeText(formattedPhoneNumbers)
+      .then(() => {
+        setCopied(true)
+        console.log('Numery telefonów skopiowane do schowka')
+      })
+      .catch(err => {
+        console.error('Błąd kopiowania do schowka:', err)
+      })
+  }
 
   // Filtrowanie użytkowników
   const filteredUsers = users.filter(user => {
@@ -100,15 +149,58 @@ const UserManagement = () => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center space-x-3">
           <Users className="w-6 h-6 text-primary" />
           <h3 className="text-xl font-bold text-gray-800">Zarządzanie użytkownikami</h3>
         </div>
-        <div className="text-sm text-gray-600">
-          Łącznie: {filteredUsers.length} użytkowników
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="text-sm text-gray-600 whitespace-nowrap">
+            Łącznie: {filteredUsers.length} użytkowników
+          </div>
+          <button
+            onClick={() => {
+              fetchPhoneNumbers()
+            }}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            disabled={loadingPhones}
+          >
+            <Phone className="w-4 h-4" />
+            <span>Pobierz numery telefonów</span>
+          </button>
         </div>
       </div>
+      
+      {/* Sekcja z numerami telefonów */}
+      {phoneNumbers.length > 0 && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+            <h4 className="font-medium text-blue-800 flex items-center">
+              <Phone className="w-4 h-4 mr-2" />
+              Numery telefonów ({phoneCount})
+            </h4>
+            <button
+              onClick={copyPhoneNumbers}
+              className={`flex items-center space-x-2 ${copied ? 'bg-green-600' : 'bg-blue-600'} text-white px-3 py-1 rounded-lg hover:opacity-90 transition-colors text-sm`}
+            >
+              {copied ? (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Skopiowano!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Kopiuj numery</span>
+                </>
+              )}
+            </button>
+          </div>
+          <div className="bg-white p-3 rounded border border-blue-100 text-sm text-gray-700 max-h-32 overflow-y-auto break-all">
+            {formattedPhoneNumbers}
+          </div>
+        </div>
+      )}
 
       {/* Filtry i wyszukiwanie */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">

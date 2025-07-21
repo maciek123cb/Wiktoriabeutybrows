@@ -248,6 +248,38 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+// Endpoint do pobierania wszystkich numerów telefonów
+app.get('/api/admin/phone-numbers', verifyToken, async (req, res) => {
+  try {
+    // Sprawdzamy, czy użytkownik ma uprawnienia administratora
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Brak uprawnień' 
+      });
+    }
+
+    // Pobieramy wszystkie numery telefonów z bazy danych
+    const [users] = await db.execute('SELECT phone FROM users WHERE phone IS NOT NULL AND phone != ""');
+    
+    // Wyciągamy same numery telefonów
+    const phoneNumbers = users.map(user => user.phone);
+    
+    res.json({
+      success: true,
+      phoneNumbers,
+      formattedPhoneNumbers: phoneNumbers.join(', '),
+      count: phoneNumbers.length
+    });
+  } catch (error) {
+    console.error('Błąd pobierania numerów telefonów:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Błąd serwera podczas pobierania numerów telefonów'
+    });
+  }
+});
+
 // REJESTRACJA
 app.post('/api/register', async (req, res) => {
   try {
