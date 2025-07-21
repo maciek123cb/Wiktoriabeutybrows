@@ -533,106 +533,57 @@ app.get('/api/available-dates', async (req, res) => {
   try {
     // Dodajemy szczegółowe logowanie
     console.log('Rozpoczynam pobieranie dostępnych dat');
+    console.log('Typ bazy danych:', dbType);
     
-    // Generuj domyślne daty (dzisiaj + 14 dni)
-    const generateDefaultDates = () => {
-      const dates = [];
-      const today = new Date();
-      for (let i = 0; i < 14; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
+    // Sprawdź, czy w ogóle istnieją jakieś sloty w bazie
+    const [slotsCheck] = await db.execute('SELECT COUNT(*) as count FROM available_slots');
+    console.log('Liczba slotów w bazie:', slotsCheck[0]?.count || 0);
+    
+    // Jeśli nie ma slotów w bazie, zwróć pustą tablicę
+    if (!slotsCheck[0] || slotsCheck[0].count === 0) {
+      console.log('Brak slotów w bazie, zwracam pustą tablicę');
+      return res.json({ dates: [] });
+    }
+    
+    let query;
+    if (dbType === 'postgres') {
+      query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURRENT_DATE ORDER BY date';
+    } else {
+      query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURDATE() ORDER BY date';
+    }
+    
+    console.log('Wykonuję zapytanie:', query);
+    
+    const [slots] = await db.execute(query);
+    console.log('Raw slots z bazy (typ):', typeof slots, 'czy tablica:', Array.isArray(slots));
+    
+    // Zawsze zwróć tablicę, nawet jeśli slots jest undefined
+    const safeSlots = Array.isArray(slots) ? slots : [];
+    
+    const dates = safeSlots.map(slot => {
+      if (!slot || !slot.date) {
+        console.warn('Nieprawidłowy format slotu:', slot);
+        return null;
+      }
+      try {
+        // Naprawiam problem z przesunięciem daty
+        const date = new Date(slot.date);
+        // Nie dodajemy dodatkowego dnia, aby uniknąć przesunięcia
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        dates.push(`${year}-${month}-${day}`);
+        return `${year}-${month}-${day}`;
+      } catch (err) {
+        console.error('Błąd przetwarzania daty:', err, 'dla slotu:', slot);
+        return null;
       }
-      return dates;
-    };
+    }).filter(date => date !== null); // Filtruj nieprawidłowe daty
     
-    // Próbujemy pobrać daty z bazy, ale jeśli wystąpi błąd, używamy domyślnych
-    try {
-      console.log('Typ bazy danych:', dbType);
-      
-      // Sprawdź, czy w ogóle istnieją jakieś sloty w bazie
-      const [slotsCheck] = await db.execute('SELECT COUNT(*) as count FROM available_slots');
-      console.log('Liczba slotów w bazie:', slotsCheck[0]?.count || 0);
-      
-      // Jeśli nie ma slotów w bazie, zwróć domyślne daty
-      if (!slotsCheck[0] || slotsCheck[0].count === 0) {
-        console.log('Brak slotów w bazie, zwracam domyślne daty');
-        const defaultDates = generateDefaultDates();
-        return res.json({ dates: defaultDates });
-      }
-      
-      let query;
-      if (dbType === 'postgres') {
-        query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURRENT_DATE ORDER BY date';
-      } else {
-        query = 'SELECT DISTINCT date FROM available_slots WHERE date >= CURDATE() ORDER BY date';
-      }
-      
-      console.log('Wykonuję zapytanie:', query);
-      
-      const [slots] = await db.execute(query);
-      console.log('Raw slots z bazy (typ):', typeof slots, 'czy tablica:', Array.isArray(slots));
-      
-      // Zawsze zwróć tablicę, nawet jeśli slots jest undefined
-      const safeSlots = Array.isArray(slots) ? slots : [];
-      
-      if (safeSlots.length === 0) {
-        console.log('Brak dostępnych dat w bazie, zwracam domyślne daty');
-        const defaultDates = generateDefaultDates();
-        return res.json({ dates: defaultDates });
-      }
-      
-      const dates = safeSlots.map(slot => {
-        if (!slot || !slot.date) {
-          console.warn('Nieprawidłowy format slotu:', slot);
-          return null;
-        }
-        try {
-          // Naprawiam problem z przesunięciem daty
-          const date = new Date(slot.date);
-          // Nie dodajemy dodatkowego dnia, aby uniknąć przesunięcia
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        } catch (err) {
-          console.error('Błąd przetwarzania daty:', err, 'dla slotu:', slot);
-          return null;
-        }
-      }).filter(date => date !== null); // Filtruj nieprawidłowe daty
-      
-      console.log('Sformatowane daty:', dates);
-      
-      // Jeśli po przetworzeniu nie ma żadnych dat, zwróć domyślne
-      if (dates.length === 0) {
-        console.log('Po przetworzeniu brak dostępnych dat, zwracam domyślne');
-        const defaultDates = generateDefaultDates();
-        return res.json({ dates: defaultDates });
-      }
-      
-      return res.json({ dates });
-    } catch (dbError) {
-      console.error('Błąd zapytania do bazy danych:', dbError);
-      const defaultDates = generateDefaultDates();
-      return res.json({ dates: defaultDates });
-    }
+    console.log('Sformatowane daty:', dates);
+    return res.json({ dates });
   } catch (error) {
     console.error('Błąd pobierania dat:', error);
-    // Generuj domyślne daty w przypadku błędu
-    const today = new Date();
-    const dates = [];
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      dates.push(`${year}-${month}-${day}`);
-    }
-    return res.json({ dates });
+    return res.json({ dates: [] }); // Zwracamy pustą tablicę w przypadku błędu
   }
 });
 
@@ -642,15 +593,10 @@ app.get('/api/available-slots/:date', async (req, res) => {
     const { date } = req.params;
     console.log('Pobieranie slotów dla daty:', date);
     
-    // Generuj domyślne sloty czasowe
-    const generateDefaultSlots = () => {
-      return ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-    };
-    
     // Sprawdzamy format daty
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       console.warn('Nieprawidłowy format daty:', date);
-      return res.json({ slots: generateDefaultSlots() }); // Zwracamy domyślne sloty zamiast pustej tablicy
+      return res.json({ slots: [] }); // Zwracamy pustą tablicę w przypadku nieprawidłowego formatu
     }
     
     console.log('Format daty poprawny:', date);
@@ -682,13 +628,13 @@ app.get('/api/available-slots/:date', async (req, res) => {
         console.log('Wynik sprawdzenia daty (raw):', dateCheck);
       } catch (dbError) {
         console.error('Błąd zapytania o sprawdzenie daty:', dbError);
-        return res.json({ slots: generateDefaultSlots() }); // Zwracamy domyślne sloty w przypadku błędu
+        return res.json({ slots: [] }); // Zwracamy pustą tablicę w przypadku błędu
       }
       
-      // Jeśli nie ma slotów dla danej daty, zwróć domyślne
+      // Jeśli nie ma slotów dla danej daty, zwróć pustą tablicę
       if (!dateCheck || !dateCheck[0] || dateCheck[0].count === 0) {
-        console.log('Brak slotów dla daty:', date, 'zwracam domyślne sloty');
-        return res.json({ slots: generateDefaultSlots() });
+        console.log('Brak slotów dla daty:', date, 'zwracam pustą tablicę');
+        return res.json({ slots: [] });
       }
       
       // Jeśli data istnieje, pobierz dostępne sloty
@@ -712,13 +658,13 @@ app.get('/api/available-slots/:date', async (req, res) => {
         console.log('Pobrano dostępne sloty:', availableSlots);
       } catch (dbError) {
         console.error('Błąd zapytania o dostępne sloty:', dbError);
-        return res.json({ slots: generateDefaultSlots() }); // Zwracamy domyślne sloty w przypadku błędu
+        return res.json({ slots: [] }); // Zwracamy pustą tablicę w przypadku błędu
       }
       
-      // Jeśli nie ma dostępnych slotów, zwróć domyślne
+      // Jeśli nie ma dostępnych slotów, zwróć pustą tablicę
       if (!availableSlots || !Array.isArray(availableSlots) || availableSlots.length === 0) {
-        console.log('Brak dostępnych slotów, zwracam domyślne');
-        return res.json({ slots: generateDefaultSlots() });
+        console.log('Brak dostępnych slotów, zwracam pustą tablicę');
+        return res.json({ slots: [] });
       }
       
       // Pobieramy wszystkie zarezerwowane sloty dla danej daty
@@ -758,22 +704,15 @@ app.get('/api/available-slots/:date', async (req, res) => {
         .filter(Boolean)
         .filter(time => !reservedTimes.includes(time));
       
-      // Jeśli po filtrowaniu nie ma żadnych slotów, zwróć domyślne
-      if (freeSlots.length === 0) {
-        console.log('Po filtrowaniu brak dostępnych slotów, zwracam domyślne');
-        return res.json({ slots: generateDefaultSlots() });
-      }
-      
       console.log('Wolne sloty:', freeSlots);
       return res.json({ slots: freeSlots });
     } catch (dbError) {
       console.error('Błąd zapytania do bazy danych:', dbError);
-      return res.json({ slots: generateDefaultSlots() }); // Zwracamy domyślne sloty w przypadku błędu
+      return res.json({ slots: [] }); // Zwracamy pustą tablicę w przypadku błędu
     }
   } catch (error) {
     console.error('Błąd pobierania slotów:', error);
-    // Generuj domyślne sloty w przypadku błędu
-    return res.json({ slots: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'] });
+    return res.json({ slots: [] }); // Zwracamy pustą tablicę w przypadku błędu
   }
 });
 
@@ -1213,50 +1152,23 @@ async function startServer() {
 // ENDPOINTY DLA USŁUG
 app.get('/api/services', async (req, res) => {
   try {
-    // Generuj domyślne usługi
-    const generateDefaultServices = () => {
-      return [
-        { id: 1, name: 'Manicure klasyczny', description: 'Profesjonalny manicure z lakierowaniem', price: 80.00, duration: 60, category: 'Manicure', is_active: true },
-        { id: 2, name: 'Manicure hybrydowy', description: 'Trwały manicure hybrydowy', price: 120.00, duration: 90, category: 'Manicure', is_active: true },
-        { id: 3, name: 'Pedicure klasyczny', description: 'Pielęgnacja stóp z lakierowaniem', price: 100.00, duration: 75, category: 'Pedicure', is_active: true },
-        { id: 4, name: 'Oczyszczanie twarzy', description: 'Głębokie oczyszczanie skóry twarzy', price: 150.00, duration: 60, category: 'Pielęgnacja twarzy', is_active: true },
-        { id: 5, name: 'Peeling chemiczny', description: 'Profesjonalny peeling kwasami', price: 200.00, duration: 45, category: 'Pielęgnacja twarzy', is_active: true },
-        { id: 6, name: 'Laminacja brwi', description: 'Modelowanie i laminacja brwi', price: 80.00, duration: 45, category: 'Stylizacja brwi', is_active: true },
-        { id: 7, name: 'Mezoterapia igłowa', description: 'Odmładzająca mezoterapia', price: 300.00, duration: 60, category: 'Medycyna estetyczna', is_active: true }
-      ];
-    };
-    
     try {
       const [services] = await db.execute(
         'SELECT * FROM services WHERE is_active = TRUE ORDER BY category, name'
       );
       
-      // Jeśli nie ma usług w bazie, zwróć domyślne
-      if (!services || !Array.isArray(services) || services.length === 0) {
-        console.log('Brak usług w bazie, zwracam domyślne');
-        return res.json({ services: generateDefaultServices() });
-      }
-      
-      res.json({ services });
+      // Zawsze zwracamy tablicę, nawet jeśli jest pusta
+      const safeServices = Array.isArray(services) ? services : [];
+      res.json({ services: safeServices });
     } catch (dbError) {
       console.error('Błąd zapytania do bazy danych:', dbError);
-      // W przypadku błędu zwróć domyślne usługi
-      res.json({ services: generateDefaultServices() });
+      // W przypadku błędu zwracamy pustą tablicę
+      res.json({ services: [] });
     }
   } catch (error) {
     console.error('Błąd pobierania usług:', error);
-    // W przypadku błędu zwróć domyślne usługi
-    res.json({ 
-      services: [
-        { id: 1, name: 'Manicure klasyczny', description: 'Profesjonalny manicure z lakierowaniem', price: 80.00, duration: 60, category: 'Manicure', is_active: true },
-        { id: 2, name: 'Manicure hybrydowy', description: 'Trwały manicure hybrydowy', price: 120.00, duration: 90, category: 'Manicure', is_active: true },
-        { id: 3, name: 'Pedicure klasyczny', description: 'Pielęgnacja stóp z lakierowaniem', price: 100.00, duration: 75, category: 'Pedicure', is_active: true },
-        { id: 4, name: 'Oczyszczanie twarzy', description: 'Głębokie oczyszczanie skóry twarzy', price: 150.00, duration: 60, category: 'Pielęgnacja twarzy', is_active: true },
-        { id: 5, name: 'Peeling chemiczny', description: 'Profesjonalny peeling kwasami', price: 200.00, duration: 45, category: 'Pielęgnacja twarzy', is_active: true },
-        { id: 6, name: 'Laminacja brwi', description: 'Modelowanie i laminacja brwi', price: 80.00, duration: 45, category: 'Stylizacja brwi', is_active: true },
-        { id: 7, name: 'Mezoterapia igłowa', description: 'Odmładzająca mezoterapia', price: 300.00, duration: 60, category: 'Medycyna estetyczna', is_active: true }
-      ]
-    });
+    // W przypadku błędu zwracamy pustą tablicę
+    res.json({ services: [] });
   }
 });
 
