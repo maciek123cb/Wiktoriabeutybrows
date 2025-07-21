@@ -327,7 +327,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
                                 <span className="text-sm text-green-800">{service.name}</span>
                               </div>
                               <span className="text-sm font-semibold text-green-800">
-                                {typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}
+                                {typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : (service.price && !isNaN(parseFloat(service.price)) ? `${parseFloat(service.price).toFixed(2)} zł` : service.price)}
                               </span>
                             </div>
                           ))
@@ -348,12 +348,12 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
                       {selectedServices.map((service) => (
                         <div key={service.id} className="flex justify-between text-sm">
                           <span>{service.name}</span>
-                          <span className="font-medium">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}</span>
+                          <span className="font-medium">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : (service.price && !isNaN(parseFloat(service.price)) ? `${parseFloat(service.price).toFixed(2)} zł` : service.price)}</span>
                         </div>
                       ))}
                       <div className="border-t border-green-300 mt-2 pt-2 flex justify-between font-bold text-green-800">
                         <span>Razem:</span>
-                        <span>{calculateTotalPrice().toFixed(2)} zł</span>
+                        <span>{parseFloat(calculateTotalPrice()).toFixed(2)} zł</span>
                       </div>
                     </div>
                   </div>

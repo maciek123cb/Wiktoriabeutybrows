@@ -436,13 +436,13 @@ const AppointmentCalendar = () => {
                               {appointment.services.map((service, index) => (
                                 <div key={index} className="flex justify-between text-sm">
                                   <span className="text-gray-600">{service.service_name}</span>
-                                  <span className="font-medium">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}</span>
+                                  <span className="font-medium">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : (service.price && !isNaN(parseFloat(service.price)) ? `${parseFloat(service.price).toFixed(2)} zł` : service.price)}</span>
                                 </div>
                               ))}
-                              {appointment.total_price > 0 && (
+                              {appointment.total_price && parseFloat(appointment.total_price) > 0 && (
                                 <div className="flex justify-between text-sm font-bold pt-1 border-t border-gray-100">
                                   <span>Razem:</span>
-                                  <span>{appointment.total_price.toFixed(2)} zł</span>
+                                  <span>{parseFloat(appointment.total_price).toFixed(2)} zł</span>
                                 </div>
                               )}
                             </div>
