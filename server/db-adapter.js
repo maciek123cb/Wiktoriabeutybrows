@@ -8,11 +8,15 @@ const DB_TYPE = process.env.DB_TYPE || 'mysql';
 console.log('Inicjalizacja adaptera bazy danych, typ:', DB_TYPE);
 
 let db = null;
-let dbType = null;
+let dbType = DB_TYPE;
 
 async function initializeDatabase() {
   try {
-    if (DB_TYPE === 'postgres' || DB_TYPE === 'postgresql') {
+    // Make sure DB_TYPE is defined
+    const dbTypeToUse = process.env.DB_TYPE || 'mysql';
+    console.log('Using database type:', dbTypeToUse);
+    
+    if (dbTypeToUse === 'postgres' || dbTypeToUse === 'postgresql') {
       const { Pool } = require('pg');
       dbType = 'postgres';
       
@@ -213,5 +217,6 @@ async function runInitScript() {
 module.exports = {
   initializeDatabase,
   runInitScript,
-  getDb: () => db
+  getDb: () => db,
+  getDbType: () => dbType
 };

@@ -1,4 +1,13 @@
 require('dotenv').config();
+
+// Log environment variables for debugging (without sensitive info)
+console.log('Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DB_TYPE: process.env.DB_TYPE,
+  PORT: process.env.PORT,
+  DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set'
+});
+
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
@@ -149,7 +158,7 @@ async function connectDB() {
     
     db = dbAdapter.getDb();
     // Pobierz typ bazy danych z adaptera
-    dbType = DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' ? 'postgres' : 'mysql';
+    dbType = dbAdapter.getDbType();
     console.log('Typ bazy danych:', dbType);
     return true;
   } catch (error) {
