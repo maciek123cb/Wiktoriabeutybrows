@@ -389,7 +389,7 @@ const AppointmentCalendar = () => {
                   {appointments.map((appointment) => (
                     <motion.div
                       key={appointment.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
@@ -425,6 +425,27 @@ const AppointmentCalendar = () => {
                           <div className="flex items-start space-x-2">
                             <MessageSquare className="w-4 h-4 text-gray-400 mt-0.5" />
                             <span className="text-gray-600 text-sm">{appointment.notes}</span>
+                          </div>
+                        )}
+                        
+                        {/* Wybrane usługi */}
+                        {appointment.services && appointment.services.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            <h5 className="text-sm font-medium text-gray-700 mb-1">Wybrane usługi:</h5>
+                            <div className="space-y-1">
+                              {appointment.services.map((service, index) => (
+                                <div key={index} className="flex justify-between text-sm">
+                                  <span className="text-gray-600">{service.service_name}</span>
+                                  <span className="font-medium">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : service.price}</span>
+                                </div>
+                              ))}
+                              {appointment.total_price > 0 && (
+                                <div className="flex justify-between text-sm font-bold pt-1 border-t border-gray-100">
+                                  <span>Razem:</span>
+                                  <span>{appointment.total_price.toFixed(2)} zł</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
