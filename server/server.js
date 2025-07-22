@@ -651,10 +651,20 @@ app.get('/api/user/appointments', verifyToken, async (req, res) => {
         }
         
         if (tableExists) {
-          const [services] = await db.execute(
-            'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = ?',
-            [appointment.id]
-          );
+          let services;
+          if (dbType === 'postgres') {
+            const [result] = await db.execute(
+              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = $1',
+              [appointment.id]
+            );
+            services = result;
+          } else {
+            const [result] = await db.execute(
+              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = ?',
+              [appointment.id]
+            );
+            services = result;
+          }
           appointment.services = services;
         } else {
           appointment.services = [];
@@ -1409,14 +1419,24 @@ app.get('/api/admin/appointments', verifyToken, async (req, res) => {
         }
         
         if (tableExists) {
-          const [services] = await db.execute(
-            'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = ?',
-            [appointment.id]
-          );
+          let services;
+          if (dbType === 'postgres') {
+            const [result] = await db.execute(
+              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = $1',
+              [appointment.id]
+            );
+            services = result;
+          } else {
+            const [result] = await db.execute(
+              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = ?',
+              [appointment.id]
+            );
+            services = result;
+          }
           appointment.services = services;
           
           // Oblicz łączny czas trwania usług
-          appointment.total_duration = services.reduce((sum, service) => sum + (service.duration || 0), 0);
+          appointment.total_duration = services.reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
         } else {
           appointment.services = [];
           appointment.total_duration = 0;
@@ -1614,16 +1634,30 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
     
     // Dodaj wizytę jako potwierdzoną
     let appointmentId;
+    // Upewnij się, że totalPrice jest liczbą
+    const numericTotalPrice = parseFloat(totalPrice) || 0;
+    // Upewnij się, że totalDuration jest liczbą
+    const numericTotalDuration = parseInt(totalDuration) || 0;
+    
+    console.log('Wartości przed zapisem:', { 
+      userId, 
+      date, 
+      time, 
+      notes: notes || '', 
+      totalPrice: numericTotalPrice, 
+      totalDuration: numericTotalDuration 
+    });
+    
     if (dbType === 'postgres') {
       const [result] = await db.execute(
         "INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4, 'confirmed', $5, $6) RETURNING id",
-        [userId, date, time, notes || '', totalPrice || 0, totalDuration]
+        [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
       );
       appointmentId = result[0].id;
     } else {
       const [result] = await db.execute(
         'INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES (?, ?, ?, ?, "confirmed", ?, ?)',
-        [userId, date, time, notes || '', totalPrice || 0, totalDuration]
+        [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
       );
       appointmentId = result.insertId;
     }

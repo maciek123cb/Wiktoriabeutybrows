@@ -161,7 +161,9 @@ const AppointmentCalendar = () => {
           email: newAppointment.email,
           date: dateStr,
           time: newAppointment.time,
-          notes: newAppointment.notes || ''
+          notes: newAppointment.notes || '',
+          totalPrice: 0,
+          totalDuration: 0
         })
       })
       
