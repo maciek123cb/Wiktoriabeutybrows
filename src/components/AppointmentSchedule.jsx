@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, Phone, Mail } from 'lucide-react'
+import { Calendar, Clock, Phone, Mail, Instagram } from 'lucide-react'
 import { API_URL } from '../config'
 
 const AppointmentSchedule = ({ selectedDate, selectedTime }) => {
@@ -143,9 +143,9 @@ const AppointmentSchedule = ({ selectedDate, selectedTime }) => {
               </a>
             </div>
             <div className="flex items-center space-x-3">
-              <Mail className="w-5 h-5 text-gray-500" />
-              <a href={`mailto:${contactInfo.email}`} className="text-gray-700 hover:underline">
-                {contactInfo.email}
+              <Instagram className="w-5 h-5 text-pink-500" />
+              <a href="https://www.instagram.com/wiktoriabeauty_brows/" target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline">
+                Instagram
               </a>
             </div>
           </div>
