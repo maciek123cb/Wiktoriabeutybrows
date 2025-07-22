@@ -22,7 +22,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
 
   useEffect(() => {
     // Pobieramy dostępne daty dla wszystkich użytkowników (zalogowanych i niezalogowanych)
-    if (!isAdmin && !propAvailableDates?.length) {
+    if (!propAvailableDates?.length) {
       fetchAvailableDates();
       // Odświeżaj co 30 sekund
       const interval = setInterval(fetchAvailableDates, 30000);
@@ -46,20 +46,16 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
       
       let response;
       
-      if (token && !isAdmin) {
+      if (token) {
         // Dla zalogowanych użytkowników pobieramy dostępne daty z autoryzacją
         response = await fetch(`${API_URL}/api/available-dates`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-      } else if (!isAdmin) {
+      } else {
         // Dla niezalogowanych użytkowników pobieramy dostępne daty bez autoryzacji
         response = await fetch(`${API_URL}/api/available-dates`);
-      } else {
-        // Dla admina nie pobieramy dostępnych dat
-        setIsLoading(false);
-        return;
       }
       
       // Jeśli odpowiedź jest 401 Unauthorized, to znaczy że endpoint wymaga autoryzacji
@@ -138,7 +134,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     const dateStr = `${year}-${month}-${day}`
     
     // Pobierz status daty
-    const status = dateStatuses[dateStr] || { status: 'none' };
+    const status = dateStatuses[dateStr];
     
     // Sprawdzamy, czy data jest w tablicy dostępnych dat
     const isAvailable = Array.isArray(availableDates) && availableDates.length > 0 && availableDates.includes(dateStr);
@@ -147,24 +143,44 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     if (isAdmin) {
       const hasSlot = hasSlots(date);
       
-      // Logowanie dla debugowania
-      console.log(`Data ${dateStr} - status:`, status, 'hasSlot:', hasSlot);
-      
       // Jeśli data ma sloty, ale nie ma statusu, ustawiamy status na 'available'
-      if (hasSlot && (!status || status.status === 'none')) {
+      if (hasSlot) {
+        if (!status) {
+          return { 
+            available: true, 
+            status: 'available',
+            availableCount: 1,
+            bookedCount: 0,
+            totalCount: 1
+          };
+        }
+        
+        // Jeśli mamy status, zwracamy go
         return { 
           available: true, 
-          status: 'available',
-          availableCount: 1,
-          bookedCount: 0,
-          totalCount: 1
+          status: status.status || 'available',
+          availableCount: status.availableCount || 0,
+          bookedCount: status.bookedCount || 0,
+          totalCount: status.totalCount || 0
         };
       }
     }
     
+    // Jeśli nie mamy statusu, zwracamy domyślny
+    if (!status) {
+      return { 
+        available: isAvailable, 
+        status: 'none',
+        availableCount: 0,
+        bookedCount: 0,
+        totalCount: 0
+      };
+    }
+    
+    // Zwracamy status
     return { 
       available: isAvailable, 
-      status: status.status,
+      status: status.status || 'none',
       availableCount: status.availableCount || 0,
       bookedCount: status.bookedCount || 0,
       totalCount: status.totalCount || 0
@@ -243,9 +259,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     })
     
     // Odśwież dostępne daty po zmianie miesiąca dla wszystkich użytkowników
-    if (!isAdmin) {
-      setTimeout(() => fetchAvailableDates(), 100);
-    }
+    setTimeout(() => fetchAvailableDates(), 100);
   }
 
   const days = getDaysInMonth(currentDate)

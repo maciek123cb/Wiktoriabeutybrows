@@ -17,15 +17,23 @@ const AdminCalendar = () => {
   const handleDateSelect = (date) => {
     setSelectedDate(date)
     fetchSlotsForDate(date)
+    // Odśwież dostępne daty i ich statusy po wybraniu daty
+    fetchDatesWithSlots()
   }
 
   const fetchDatesWithSlots = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/available-dates`)
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/available-dates`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       const data = await response.json()
+      console.log('Pobrane daty z terminami:', data)
       setDatesWithSlots(data.dates || [])
+      return data
     } catch (error) {
       console.error('Błąd pobierania dat z terminami:', error)
+      return { dates: [] }
     }
   }
 
@@ -79,9 +87,10 @@ const AdminCalendar = () => {
       })
 
       if (response.ok) {
-        fetchSlotsForDate(selectedDate)
+        // Odśwież dane po dodaniu slotu
+        await fetchSlotsForDate(selectedDate)
         setNewTime('')
-        fetchDatesWithSlots()
+        await fetchDatesWithSlots()
       } else {
         console.error('Błąd HTTP:', response.status)
       }
@@ -111,8 +120,9 @@ const AdminCalendar = () => {
       })
 
       if (response.ok) {
-        fetchSlotsForDate(selectedDate)
-        fetchDatesWithSlots()
+        // Odśwież dane po usunięciu slotu
+        await fetchSlotsForDate(selectedDate)
+        await fetchDatesWithSlots()
       }
     } catch (error) {
       console.error('Błąd usuwania slotu:', error)
@@ -262,10 +272,12 @@ const AdminCalendar = () => {
       {showManualForm && (
         <ManualAppointmentForm
           onClose={() => setShowManualForm(false)}
-          onSuccess={(message) => {
+          onSuccess={async (message) => {
             alert(message)
             setShowManualForm(false)
-            fetchSlotsForDate(selectedDate)
+            // Odśwież dane po dodaniu wizyty ręcznie
+            await fetchSlotsForDate(selectedDate)
+            await fetchDatesWithSlots()
           }}
           selectedDate={selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : ''}
           availableSlots={availableSlots}
