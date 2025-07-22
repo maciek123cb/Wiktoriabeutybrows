@@ -4,14 +4,8 @@ import { X, Calendar, Clock, User, Mail, Phone, Lock, LogIn, Scissors, Check, Ch
 import { API_URL } from '../config'
 
 const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    notes: ''
-  })
+  // Usunięto stany formularza, ponieważ rezerwacje są tylko telefoniczne
   const [errors, setErrors] = useState({})
-  const [isLoading, setIsLoading] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [contactInfo, setContactInfo] = useState(null)
   const [services, setServices] = useState([])
@@ -137,91 +131,11 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
     }
   }
 
-  const validateForm = () => {
-    const newErrors = {}
+  // Funkcja validateForm została usunięta, ponieważ rezerwacje są tylko telefoniczne
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Imię i nazwisko jest wymagane'
-    }
+  // Funkcja handleSubmit została usunięta, ponieważ rezerwacje są tylko telefoniczne
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email jest wymagany'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Nieprawidłowy format email'
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Numer telefonu jest wymagany'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    
-    if (!validateForm()) return
-    
-    // Sprawdzamy czy łączny czas nie przekracza 90 minut
-    if (isTotalDurationExceeded()) {
-      setErrors({ general: 'Wybrane usługi trwają łącznie ponad 1:30h. Prosimy o kontakt telefoniczny w celu rezerwacji.' })
-      return
-    }
-
-    setIsLoading(true)
-
-    try {
-      const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/book-appointment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          date: selectedDate,
-          time: selectedTime,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          notes: formData.notes,
-          services: selectedServices.map(service => ({
-            id: service.id,
-            name: service.name,
-            price: service.price,
-            duration: service.duration
-          })),
-          totalPrice: calculateTotalPrice(),
-          totalDuration: calculateTotalDuration()
-        })
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        onSuccess(data.reservation)
-        onClose()
-        setFormData({ name: '', email: '', phone: '', notes: '' })
-        setSelectedServices([])
-      } else {
-        setErrors({ general: data.message })
-      }
-    } catch (error) {
-      setErrors({ general: 'Błąd połączenia z serwerem' })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
-    }
-  }
+  // Funkcja handleChange została usunięta, ponieważ rezerwacje są tylko telefoniczne
   
   // Funkcja do przełączania rozwinięcia kategorii
   const toggleCategory = (category) => {
@@ -412,138 +326,64 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
 
           {isLoggedIn ? (
             /* Komunikat o konieczności rezerwacji telefonicznej */
-            isTotalDurationExceeded() ? (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <Phone className="w-5 h-5 text-amber-600" />
-                  <h3 className="font-semibold">Rezerwacja tylko telefoniczna</h3>
-                </div>
-                <p className="text-sm">
-                  Wybrane usługi trwają łącznie ponad 1:30h. Prosimy o kontakt telefoniczny w celu rezerwacji.
-                  {contactInfo && (
-                    <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline ml-1">
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-4">
+              <div className="flex items-center space-x-3 mb-2">
+                <Phone className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold">Rezerwacja telefoniczna</h3>
+              </div>
+              <p className="text-sm">
+                Aby zarezerwować wizytę, prosimy o kontakt telefoniczny.
+                {contactInfo && (
+                  <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline ml-1">
+                    {contactInfo.phone}
+                  </a>
+                )}
+              </p>
+              {contactInfo && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center space-x-3">
+                    <Phone className="w-5 h-5 text-primary" />
+                    <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline">
                       {contactInfo.phone}
                     </a>
-                  )}
-                </p>
-              </div>
-            ) : (
-              /* Formularz dla zalogowanych użytkowników */
-              <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Imię i nazwisko */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Imię i nazwisko *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
-                      errors.name ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Jan Kowalski"
-                  />
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Mail className="w-5 h-5 text-gray-500" />
+                    <a href={`mailto:${contactInfo.email}`} className="text-gray-700 hover:underline">
+                      {contactInfo.email}
+                    </a>
+                  </div>
                 </div>
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
-                      errors.email ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="jan@example.com"
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                )}
-              </div>
-
-              {/* Telefon */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Numer telefonu *
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
-                      errors.phone ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="+48 123 456 789"
-                  />
-                </div>
-                {errors.phone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                )}
-              </div>
-
-              {/* Notatki */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dodatkowe informacje (opcjonalne)
-                </label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors resize-none"
-                  placeholder="Np. preferowany rodzaj zabiegu, uwagi specjalne..."
-                />
-              </div>
-
-              {/* Przyciski */}
+              )}
+              
+              {/* Przycisk zamknięcia */}
               <div className="flex space-x-3 pt-4">
                 <button
-                  type="button"
+                  onClick={() => contactInfo && window.location.href = `tel:${contactInfo.phone}`}
+                  className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
+                >
+                  <Phone className="w-5 h-5" />
+                  <span>Zadzwoń</span>
+                </button>
+                <button
                   onClick={onClose}
                   className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Anuluj
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1 btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Rezerwuję...' : 'Zarezerwuj'}
+                  Zamknij
                 </button>
               </div>
-            </form>
-            )
+            </div>
           ) : (
             /* Informacje dla niezalogowanych użytkowników */
             <div className="space-y-6">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <div className="flex items-center space-x-3 mb-3">
-                  <Lock className="w-5 h-5 text-amber-600" />
-                  <h3 className="font-semibold text-amber-800">Wymagane logowanie</h3>
+                  <Phone className="w-5 h-5 text-amber-600" />
+                  <h3 className="font-semibold text-amber-800">Rezerwacja telefoniczna</h3>
                 </div>
                 <p className="text-amber-700 text-sm">
-                  Aby zarezerwować wizytę online, musisz być zalogowany. 
-                  Możesz również umówić się telefonicznie.
+                  Rezerwacja wizyt odbywa się tylko telefonicznie.
+                  Prosimy o kontakt pod numerem telefonu.
                 </p>
               </div>
               
@@ -569,17 +409,17 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
               
               <div className="flex space-x-3">
                 <button
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => contactInfo && window.location.href = `tel:${contactInfo.phone}`}
                   className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
                 >
-                  <LogIn className="w-5 h-5" />
-                  <span>Zaloguj się</span>
+                  <Phone className="w-5 h-5" />
+                  <span>Zadzwoń</span>
                 </button>
                 <button
                   onClick={onClose}
                   className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Anuluj
+                  Zamknij
                 </button>
               </div>
             </div>
