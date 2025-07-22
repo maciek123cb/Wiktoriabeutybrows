@@ -73,23 +73,58 @@ const addManualAppointment = async (req, res, db, dbType) => {
 
     // Utwórz tymczasowego użytkownika lub znajdź istniejącego
     let userId;
+    let userCreated = false;
+    let userFoundBy = null; // 'email', 'name', 'created'
     try {
       let existingUser;
       
+      // Sprawdzamy czy użytkownik istnieje po emailu lub po imieniu i nazwisku
       if (dbType === 'postgres') {
         [existingUser] = await db.execute(
-          'SELECT id FROM users WHERE email = $1',
-          [email]
+          'SELECT id, first_name, last_name, email FROM users WHERE email = $1 OR (first_name = $2 AND last_name = $3)',
+          [email, firstName, lastName]
         );
       } else {
         [existingUser] = await db.execute(
-          'SELECT id FROM users WHERE email = ?',
-          [email]
+          'SELECT id, first_name, last_name, email FROM users WHERE email = ? OR (first_name = ? AND last_name = ?)',
+          [email, firstName, lastName]
         );
       }
 
       if (existingUser && existingUser.length > 0) {
-        userId = existingUser[0].id;
+        // Sprawdzamy, czy znaleziony użytkownik pasuje do podanych danych
+        const foundUser = existingUser[0];
+        userId = foundUser.id;
+        
+        // Sprawdzamy, czy znaleziony użytkownik ma takie samo imię i nazwisko lub email
+        const matchesEmail = foundUser.email.toLowerCase() === email.toLowerCase();
+        const matchesName = foundUser.first_name.toLowerCase() === firstName.toLowerCase() && 
+                           foundUser.last_name.toLowerCase() === lastName.toLowerCase();
+        
+        if (matchesEmail) {
+          console.log(`Znaleziono istniejącego użytkownika po emailu, ID: ${userId}`);
+          userFoundBy = 'email';
+        } else if (matchesName) {
+          console.log(`Znaleziono istniejącego użytkownika po imieniu i nazwisku, ID: ${userId}`);
+          userFoundBy = 'name';
+        }
+        
+        // Jeśli znaleziony użytkownik ma inny email, ale takie samo imię i nazwisko, aktualizujemy jego dane
+        if (matchesName && !matchesEmail) {
+          // Aktualizujemy dane użytkownika
+          if (dbType === 'postgres') {
+            await db.execute(
+              'UPDATE users SET phone = $1, email = $2 WHERE id = $3',
+              [phone, email, userId]
+            );
+          } else {
+            await db.execute(
+              'UPDATE users SET phone = ?, email = ? WHERE id = ?',
+              [phone, email, userId]
+            );
+          }
+          console.log(`Zaktualizowano dane użytkownika o ID: ${userId}`);
+        }
       } else {
         // Utwórz użytkownika dodanego ręcznie
         let result;
@@ -106,6 +141,9 @@ const addManualAppointment = async (req, res, db, dbType) => {
           );
           userId = result.insertId;
         }
+        userCreated = true;
+        userFoundBy = 'created';
+        console.log(`Utworzono nowego użytkownika o ID: ${userId}`);
       }
     } catch (error) {
       console.error('Błąd tworzenia/znajdowania użytkownika:', error);
@@ -140,10 +178,23 @@ const addManualAppointment = async (req, res, db, dbType) => {
       });
     }
 
+    // Przygotuj odpowiedni komunikat w zależności od tego, jak użytkownik został znaleziony
+    let message = 'Wizyta została dodana';
+    if (userFoundBy === 'email') {
+      message = 'Wizyta została dodana dla istniejącego klienta (znalezionego po emailu)';
+    } else if (userFoundBy === 'name') {
+      message = 'Wizyta została dodana dla istniejącego klienta (znalezionego po imieniu i nazwisku)';
+    } else if (userFoundBy === 'created') {
+      message = 'Wizyta została dodana i utworzono nowy profil klienta';
+    }
+    
     res.json({
       success: true,
-      message: 'Wizyta została dodana',
-      appointmentId
+      message,
+      appointmentId,
+      userCreated,
+      userFoundBy,
+      userId
     });
   } catch (error) {
     console.error('Błąd dodawania wizyty ręcznie:', error);

@@ -143,7 +143,16 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          onSuccess(data.message)
+          // Dodajemy informację o tym, jak użytkownik został znaleziony
+          let message = data.message;
+          if (data.userFoundBy === 'email') {
+            message = `Wizyta została dodana dla istniejącego klienta znalezionego po emailu (ID: ${data.userId})`;
+          } else if (data.userFoundBy === 'name') {
+            message = `Wizyta została dodana dla istniejącego klienta znalezionego po imieniu i nazwisku (ID: ${data.userId})`;
+          } else if (data.userFoundBy === 'created') {
+            message = `Wizyta została dodana i utworzono nowy profil klienta (ID: ${data.userId})`;
+          }
+          onSuccess(message)
         } else {
           alert(data.message || 'Wystąpił błąd podczas dodawania wizyty')
         }
