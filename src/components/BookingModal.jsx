@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, Calendar, Clock, User, Mail, Phone, Lock, LogIn, Scissors, Check, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react'
+import { X, Calendar, Clock, Mail, Phone, Scissors, Check, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react'
 import { API_URL } from '../config'
 
 const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }) => {
-  // Usunięto stany formularza, ponieważ rezerwacje są tylko telefoniczne
-  const [errors, setErrors] = useState({})
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [contactInfo, setContactInfo] = useState(null)
   const [services, setServices] = useState([])
   const [loadingServices, setLoadingServices] = useState(false)
@@ -15,17 +12,9 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
   const [selectedServices, setSelectedServices] = useState([])
   const [expandedCategories, setExpandedCategories] = useState({})
 
-  // Sprawdzamy, czy użytkownik jest zalogowany
+  // Pobieramy informacje kontaktowe i usługi przy pierwszym renderowaniu
   useEffect(() => {
-    const token = localStorage.getItem('authToken')
-    setIsLoggedIn(!!token)
-    
-    // Jeśli użytkownik nie jest zalogowany, pobieramy informacje kontaktowe
-    if (!token) {
-      fetchContactInfo()
-    }
-    
-    // Zawsze pobieramy listę usług
+    fetchContactInfo()
     fetchServices()
   }, [])
   
@@ -131,11 +120,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
     }
   }
 
-  // Funkcja validateForm została usunięta, ponieważ rezerwacje są tylko telefoniczne
-
-  // Funkcja handleSubmit została usunięta, ponieważ rezerwacje są tylko telefoniczne
-
-  // Funkcja handleChange została usunięta, ponieważ rezerwacje są tylko telefoniczne
+  // Usunięto funkcje formularza, ponieważ rezerwacje są tylko telefoniczne
   
   // Funkcja do przełączania rozwinięcia kategorii
   const toggleCategory = (category) => {
@@ -317,14 +302,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
             )}
           </div>
 
-          {/* Błąd ogólny */}
-          {errors.general && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
-              {errors.general}
-            </div>
-          )}
-
-          {/* Komunikat o konieczności rezerwacji telefonicznej - taki sam dla zalogowanych i niezalogowanych */}
+          {/* Komunikat o konieczności rezerwacji telefonicznej */}
           <div className="space-y-6">
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-center space-x-3 mb-3">
