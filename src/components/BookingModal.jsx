@@ -324,23 +324,23 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
             </div>
           )}
 
-          {isLoggedIn ? (
-            /* Komunikat o konieczności rezerwacji telefonicznej */
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-4">
-              <div className="flex items-center space-x-3 mb-2">
-                <Phone className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold">Rezerwacja telefoniczna</h3>
+          {/* Komunikat o konieczności rezerwacji telefonicznej - taki sam dla zalogowanych i niezalogowanych */}
+          <div className="space-y-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-center space-x-3 mb-3">
+                <Phone className="w-5 h-5 text-amber-600" />
+                <h3 className="font-semibold text-amber-800">Rezerwacja telefoniczna</h3>
               </div>
-              <p className="text-sm">
-                Aby zarezerwować wizytę, prosimy o kontakt telefoniczny.
-                {contactInfo && (
-                  <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline ml-1">
-                    {contactInfo.phone}
-                  </a>
-                )}
+              <p className="text-amber-700 text-sm">
+                Rezerwacja wizyt odbywa się tylko telefonicznie.
+                Prosimy o kontakt pod numerem telefonu.
               </p>
-              {contactInfo && (
-                <div className="mt-3 space-y-2">
+            </div>
+            
+            {contactInfo && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-800 mb-3">Kontakt telefoniczny</h3>
+                <div className="space-y-2">
                   <div className="flex items-center space-x-3">
                     <Phone className="w-5 h-5 text-primary" />
                     <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline">
@@ -354,76 +354,25 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
                     </a>
                   </div>
                 </div>
-              )}
-              
-              {/* Przycisk zamknięcia */}
-              <div className="flex space-x-3 pt-4">
-                <button
-                  onClick={() => { if (contactInfo) window.location.href = `tel:${contactInfo.phone}` }}
-                  className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
-                >
-                  <Phone className="w-5 h-5" />
-                  <span>Zadzwoń</span>
-                </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Zamknij
-                </button>
               </div>
+            )}
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => { if (contactInfo) window.location.href = `tel:${contactInfo.phone}` }}
+                className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
+              >
+                <Phone className="w-5 h-5" />
+                <span>Zadzwoń</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Zamknij
+              </button>
             </div>
-          ) : (
-            /* Informacje dla niezalogowanych użytkowników */
-            <div className="space-y-6">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-3">
-                  <Phone className="w-5 h-5 text-amber-600" />
-                  <h3 className="font-semibold text-amber-800">Rezerwacja telefoniczna</h3>
-                </div>
-                <p className="text-amber-700 text-sm">
-                  Rezerwacja wizyt odbywa się tylko telefonicznie.
-                  Prosimy o kontakt pod numerem telefonu.
-                </p>
-              </div>
-              
-              {contactInfo && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-3">Kontakt telefoniczny</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-3">
-                      <Phone className="w-5 h-5 text-primary" />
-                      <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline">
-                        {contactInfo.phone}
-                      </a>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Mail className="w-5 h-5 text-gray-500" />
-                      <a href={`mailto:${contactInfo.email}`} className="text-gray-700 hover:underline">
-                        {contactInfo.email}
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => { if (contactInfo) window.location.href = `tel:${contactInfo.phone}` }}
-                  className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
-                >
-                  <Phone className="w-5 h-5" />
-                  <span>Zadzwoń</span>
-                </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Zamknij
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </motion.div>
     </div>
