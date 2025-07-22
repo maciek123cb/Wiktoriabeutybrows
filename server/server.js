@@ -631,44 +631,9 @@ app.get('/api/user/appointments', verifyToken, async (req, res) => {
     // Pobierz usługi dla każdej wizyty
     for (const appointment of appointments) {
       try {
-        // Sprawdzamy czy tabela appointment_services istnieje
-        let tableExists = false;
-        try {
-          if (dbType === 'postgres') {
-            const [result] = await db.execute(
-              "SELECT to_regclass('public.appointment_services') IS NOT NULL as exists"
-            );
-            tableExists = result[0].exists;
-          } else {
-            const [result] = await db.execute(
-              "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'appointment_services'"
-            );
-            tableExists = result[0].count > 0;
-          }
-        } catch (tableError) {
-          console.error('Błąd sprawdzania istnienia tabeli appointment_services:', tableError);
-          tableExists = false;
-        }
-        
-        if (tableExists) {
-          let services;
-          if (dbType === 'postgres') {
-            const [result] = await db.execute(
-              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = $1',
-              [appointment.id]
-            );
-            services = result;
-          } else {
-            const [result] = await db.execute(
-              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = ?',
-              [appointment.id]
-            );
-            services = result;
-          }
-          appointment.services = services;
-        } else {
-          appointment.services = [];
-        }
+        // Używamy funkcji do pobierania usług
+        const fixAppointmentServices = require('./fix-appointment-services');
+        await fixAppointmentServices(appointment, dbType, db);
       } catch (servicesError) {
         console.error(`Błąd pobierania usług dla wizyty ID ${appointment.id}:`, servicesError);
         appointment.services = [];
@@ -1399,51 +1364,16 @@ app.get('/api/admin/appointments', verifyToken, async (req, res) => {
     // Pobierz usługi dla każdej wizyty
     for (const appointment of appointments) {
       try {
-        // Sprawdzamy czy tabela appointment_services istnieje
-        let tableExists = false;
-        try {
-          if (dbType === 'postgres') {
-            const [result] = await db.execute(
-              "SELECT to_regclass('public.appointment_services') IS NOT NULL as exists"
-            );
-            tableExists = result[0].exists;
-          } else {
-            const [result] = await db.execute(
-              "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'appointment_services'"
-            );
-            tableExists = result[0].count > 0;
-          }
-        } catch (tableError) {
-          console.error('Błąd sprawdzania istnienia tabeli appointment_services:', tableError);
-          tableExists = false;
-        }
+        // Używamy funkcji do pobierania usług
+        const fixAppointmentServices = require('./fix-appointment-services');
+        const services = await fixAppointmentServices(appointment, dbType, db);
         
-        if (tableExists) {
-          let services;
-          if (dbType === 'postgres') {
-            const [result] = await db.execute(
-              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = $1',
-              [appointment.id]
-            );
-            services = result;
-          } else {
-            const [result] = await db.execute(
-              'SELECT service_id, service_name, price, duration FROM appointment_services WHERE appointment_id = ?',
-              [appointment.id]
-            );
-            services = result;
-          }
-          appointment.services = services;
-          
-          // Oblicz łączny czas trwania usług
-          appointment.total_duration = services.reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
-        } else {
-          appointment.services = [];
-          appointment.total_duration = 0;
-        }
+        // Oblicz łączny czas trwania usług
+        appointment.total_duration = services.reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
       } catch (servicesError) {
         console.error(`Błąd pobierania usług dla wizyty ID ${appointment.id}:`, servicesError);
         appointment.services = [];
+        appointment.total_duration = 0;
       }
     }
     
@@ -1634,10 +1564,11 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
     
     // Dodaj wizytę jako potwierdzoną
     let appointmentId;
-    // Upewnij się, że totalPrice jest liczbą
-    const numericTotalPrice = parseFloat(totalPrice) || 0;
-    // Upewnij się, że totalDuration jest liczbą
-    const numericTotalDuration = parseInt(totalDuration) || 0;
+    
+    // Upewnij się, że totalPrice i totalDuration są liczbami
+    // Konwertujemy na liczby i upewniamy się, że nie są NaN
+    const numericTotalPrice = Number(parseFloat(totalPrice || 0));
+    const numericTotalDuration = Number(parseInt(totalDuration || 0));
     
     console.log('Wartości przed zapisem:', { 
       userId, 
@@ -1648,18 +1579,27 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
       totalDuration: numericTotalDuration 
     });
     
-    if (dbType === 'postgres') {
-      const [result] = await db.execute(
-        "INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4, 'confirmed', $5, $6) RETURNING id",
-        [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
-      );
-      appointmentId = result[0].id;
-    } else {
-      const [result] = await db.execute(
-        'INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES (?, ?, ?, ?, "confirmed", ?, ?)',
-        [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
-      );
-      appointmentId = result.insertId;
+    try {
+      if (dbType === 'postgres') {
+        const [result] = await db.execute(
+          "INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4, 'confirmed', $5, $6) RETURNING id",
+          [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
+        );
+        appointmentId = result[0].id;
+      } else {
+        const [result] = await db.execute(
+          'INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES (?, ?, ?, ?, "confirmed", ?, ?)',
+          [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
+        );
+        appointmentId = result.insertId;
+      }
+      console.log('Wizyta dodana pomyślnie, ID:', appointmentId);
+    } catch (insertError) {
+      console.error('Błąd dodawania wizyty:', insertError);
+      return res.status(500).json({
+        success: false,
+        message: 'Błąd dodawania wizyty: ' + insertError.message
+      });
     }
     
     // Dodajemy wybrane usługi do rezerwacji

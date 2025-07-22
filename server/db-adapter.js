@@ -37,12 +37,9 @@ async function initializeDatabase() {
             const convertedQuery = convertMySQLToPostgres(query);
             console.log('Converted query:', convertedQuery);
             
-            // Konwersja parametrów boolean
-            const convertedParams = params.map(param => {
-              if (param === 1 && typeof param === 'number') return true;
-              if (param === 0 && typeof param === 'number') return false;
-              return param;
-            });
+            // Używamy funkcji konwersji parametrów
+            const convertParams = require('./param-converter');
+            const convertedParams = convertParams(params);
             
             const result = await pool.query(convertedQuery, convertedParams);
             return [result.rows, result.fields];

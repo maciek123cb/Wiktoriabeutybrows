@@ -163,7 +163,8 @@ const AppointmentCalendar = () => {
           time: newAppointment.time,
           notes: newAppointment.notes || '',
           totalPrice: 0,
-          totalDuration: 0
+          totalDuration: 0,
+          services: []
         })
       })
       
