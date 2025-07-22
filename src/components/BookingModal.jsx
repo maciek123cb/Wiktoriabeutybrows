@@ -359,7 +359,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
               {/* Przycisk zamknięcia */}
               <div className="flex space-x-3 pt-4">
                 <button
-                  onClick={() => contactInfo && window.location.href = `tel:${contactInfo.phone}`}
+                  onClick={() => { if (contactInfo) window.location.href = `tel:${contactInfo.phone}` }}
                   className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
                 >
                   <Phone className="w-5 h-5" />
@@ -409,7 +409,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
               
               <div className="flex space-x-3">
                 <button
-                  onClick={() => contactInfo && window.location.href = `tel:${contactInfo.phone}`}
+                  onClick={() => { if (contactInfo) window.location.href = `tel:${contactInfo.phone}` }}
                   className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center"
                 >
                   <Phone className="w-5 h-5" />
