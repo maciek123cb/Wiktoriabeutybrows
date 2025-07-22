@@ -1094,41 +1094,79 @@ app.get('/api/admin/users/search', verifyToken, async (req, res) => {
     let params = [];
     
     // Jeśli podano konkretne pole, wyszukujemy tylko po nim
+    // Używamy LOWER() aby ignorować wielkość liter
     if (field === 'firstName') {
-      query += `first_name LIKE ? `;
+      query += `LOWER(first_name) LIKE LOWER(?) `;
       params.push(`%${q}%`);
     } else if (field === 'lastName') {
-      query += `last_name LIKE ? `;
+      query += `LOWER(last_name) LIKE LOWER(?) `;
       params.push(`%${q}%`);
     } else if (field === 'email') {
-      query += `email LIKE ? `;
+      query += `LOWER(email) LIKE LOWER(?) `;
       params.push(`%${q}%`);
     } else if (field === 'phone') {
-      query += `phone LIKE ? `;
+      query += `phone LIKE ? `; // Dla numeru telefonu nie stosujemy LOWER()
       params.push(`%${q}%`);
     } else {
       // Domyślnie wyszukujemy po wszystkich polach
-      query += `(first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?) `;
+      query += `(LOWER(first_name) LIKE LOWER(?) OR LOWER(last_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR phone LIKE ?) `;
       params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
     }
     
     query += `AND role != 'admin' ORDER BY `;
     
-    // Sortujemy wyniki w zależności od pola
+    // Sortujemy wyniki w zależności od pola, z uwzględnieniem wielkości liter
     if (field === 'firstName') {
-      query += `CASE WHEN first_name LIKE ? THEN 0 ELSE 1 END, first_name, last_name`;
-      params.push(`${q}%`); // Priorytetyzujemy wyniki zaczynające się od szukanej frazy
+      query += `
+        CASE 
+          WHEN LOWER(first_name) = LOWER(?) THEN 0 
+          WHEN LOWER(first_name) LIKE LOWER(?) THEN 1 
+          ELSE 2 
+        END, 
+        LENGTH(first_name), first_name, last_name
+      `;
+      params.push(q, `${q}%`); // Najpierw dokładne dopasowania, potem zaczynające się od frazy
     } else if (field === 'lastName') {
-      query += `CASE WHEN last_name LIKE ? THEN 0 ELSE 1 END, last_name, first_name`;
-      params.push(`${q}%`);
+      query += `
+        CASE 
+          WHEN LOWER(last_name) = LOWER(?) THEN 0 
+          WHEN LOWER(last_name) LIKE LOWER(?) THEN 1 
+          ELSE 2 
+        END, 
+        LENGTH(last_name), last_name, first_name
+      `;
+      params.push(q, `${q}%`);
     } else if (field === 'email') {
-      query += `CASE WHEN email LIKE ? THEN 0 ELSE 1 END, email`;
-      params.push(`${q}%`);
+      query += `
+        CASE 
+          WHEN LOWER(email) = LOWER(?) THEN 0 
+          WHEN LOWER(email) LIKE LOWER(?) THEN 1 
+          ELSE 2 
+        END, 
+        LENGTH(email), email
+      `;
+      params.push(q, `${q}%`);
     } else if (field === 'phone') {
-      query += `CASE WHEN phone LIKE ? THEN 0 ELSE 1 END, phone`;
-      params.push(`${q}%`);
+      query += `
+        CASE 
+          WHEN phone = ? THEN 0 
+          WHEN phone LIKE ? THEN 1 
+          ELSE 2 
+        END, 
+        LENGTH(phone), phone
+      `;
+      params.push(q, `${q}%`);
     } else {
-      query += `first_name, last_name`;
+      // Domyślne sortowanie dla ogólnego wyszukiwania
+      query += `
+        CASE 
+          WHEN LOWER(first_name) = LOWER(?) OR LOWER(last_name) = LOWER(?) OR LOWER(email) = LOWER(?) OR phone = ? THEN 0
+          WHEN LOWER(first_name) LIKE LOWER(?) OR LOWER(last_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR phone LIKE ? THEN 1
+          ELSE 2 
+        END, 
+        first_name, last_name
+      `;
+      params.push(q, q, q, q, `${q}%`, `${q}%`, `${q}%`, `${q}%`);
     }
     
     query += ` LIMIT 10`;

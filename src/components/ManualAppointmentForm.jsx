@@ -52,39 +52,54 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
         
         // Sortujemy wyniki, aby najlepsze dopasowania były na górze
         const sortedUsers = users.sort((a, b) => {
-          // Priorytetyzujemy dokładne dopasowania
-          const aExactMatch = 
-            (field === 'firstName' && a.first_name.toLowerCase() === query.toLowerCase()) ||
-            (field === 'lastName' && a.last_name.toLowerCase() === query.toLowerCase()) ||
-            (field === 'email' && a.email.toLowerCase() === query.toLowerCase()) ||
-            (field === 'phone' && a.phone === query);
+          const queryLower = query.toLowerCase();
+          
+          // Funkcja pomocnicza do oceny dopasowania
+          const getMatchScore = (user) => {
+            let score = 0;
             
-          const bExactMatch = 
-            (field === 'firstName' && b.first_name.toLowerCase() === query.toLowerCase()) ||
-            (field === 'lastName' && b.last_name.toLowerCase() === query.toLowerCase()) ||
-            (field === 'email' && b.email.toLowerCase() === query.toLowerCase()) ||
-            (field === 'phone' && b.phone === query);
-          
-          if (aExactMatch && !bExactMatch) return -1;
-          if (!aExactMatch && bExactMatch) return 1;
-          
-          // Następnie sortujemy po tym, czy zaczyna się od szukanej frazy
-          const aStartsWith = 
-            (field === 'firstName' && a.first_name.toLowerCase().startsWith(query.toLowerCase())) ||
-            (field === 'lastName' && a.last_name.toLowerCase().startsWith(query.toLowerCase())) ||
-            (field === 'email' && a.email.toLowerCase().startsWith(query.toLowerCase())) ||
-            (field === 'phone' && a.phone.startsWith(query));
+            // Sprawdzamy różne pola w zależności od tego, które pole jest edytowane
+            if (field === 'firstName' || !field) {
+              const firstName = user.first_name.toLowerCase();
+              if (firstName === queryLower) score += 100;
+              else if (firstName.startsWith(queryLower)) score += 50;
+              else if (firstName.includes(queryLower)) score += 25;
+            }
             
-          const bStartsWith = 
-            (field === 'firstName' && b.first_name.toLowerCase().startsWith(query.toLowerCase())) ||
-            (field === 'lastName' && b.last_name.toLowerCase().startsWith(query.toLowerCase())) ||
-            (field === 'email' && b.email.toLowerCase().startsWith(query.toLowerCase())) ||
-            (field === 'phone' && b.phone.startsWith(query));
+            if (field === 'lastName' || !field) {
+              const lastName = user.last_name.toLowerCase();
+              if (lastName === queryLower) score += 100;
+              else if (lastName.startsWith(queryLower)) score += 50;
+              else if (lastName.includes(queryLower)) score += 25;
+            }
+            
+            if (field === 'email' || !field) {
+              const email = user.email.toLowerCase();
+              if (email === queryLower) score += 100;
+              else if (email.startsWith(queryLower)) score += 50;
+              else if (email.includes(queryLower)) score += 25;
+            }
+            
+            if (field === 'phone' || !field) {
+              if (user.phone === query) score += 100;
+              else if (user.phone.startsWith(query)) score += 50;
+              else if (user.phone.includes(query)) score += 25;
+            }
+            
+            // Dodatkowe punkty dla krótszych dopasowań (bardziej precyzyjnych)
+            if (field === 'firstName') score -= user.first_name.length;
+            if (field === 'lastName') score -= user.last_name.length;
+            if (field === 'email') score -= user.email.length;
+            if (field === 'phone') score -= user.phone.length;
+            
+            return score;
+          };
           
-          if (aStartsWith && !bStartsWith) return -1;
-          if (!aStartsWith && bStartsWith) return 1;
+          // Porównujemy wyniki na podstawie oceny dopasowania
+          const scoreA = getMatchScore(a);
+          const scoreB = getMatchScore(b);
           
-          return 0;
+          return scoreB - scoreA; // Sortowanie malejąco (wyższy wynik na górze)
         });
         
         setSuggestions(sortedUsers)
