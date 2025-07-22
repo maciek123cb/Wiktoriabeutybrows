@@ -155,8 +155,13 @@ const AppointmentCalendar = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ...newAppointment,
-          date: dateStr
+          firstName: newAppointment.firstName,
+          lastName: newAppointment.lastName,
+          phone: newAppointment.phone,
+          email: newAppointment.email,
+          date: dateStr,
+          time: newAppointment.time,
+          notes: newAppointment.notes || ''
         })
       })
       
@@ -192,11 +197,11 @@ const AppointmentCalendar = () => {
 
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/admin/clients/search?q=${encodeURIComponent(query)}`, {
+      const response = await fetch(`${API_URL}/api/admin/users/search?q=${encodeURIComponent(query)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
-      setClientSuggestions(data.clients || [])
+      setClientSuggestions(data.users || [])
       setShowSuggestions(true)
     } catch (error) {
       console.error('Błąd wyszukiwania klientów:', error)

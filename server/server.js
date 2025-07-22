@@ -860,12 +860,12 @@ app.post('/api/book-appointment', verifyToken, async (req, res) => {
             if (dbType === 'postgres') {
               await db.execute(
                 'INSERT INTO appointment_services (appointment_id, service_id, service_name, price, duration) VALUES ($1, $2, $3, $4, $5)',
-                [appointmentId, service.id || null, service.name, service.price || 0, service.duration || 0]
+                [appointmentId, service.id || null, service.name || service.service_name, service.price || 0, service.duration || 0]
               );
             } else {
               await db.execute(
                 'INSERT INTO appointment_services (appointment_id, service_id, service_name, price, duration) VALUES (?, ?, ?, ?, ?)',
-                [appointmentId, service.id || null, service.name, service.price || 0, service.duration || 0]
+                [appointmentId, service.id || null, service.name || service.service_name, service.price || 0, service.duration || 0]
               );
             }
           } catch (serviceError) {
@@ -1510,11 +1510,14 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
 
     // Walidacja danych
     if (!firstName || !lastName || !phone || !email || !date || !time) {
+      console.error('Brakujące dane:', { firstName, lastName, phone, email, date, time });
       return res.status(400).json({
         success: false,
         message: 'Wszystkie pola są wymagane'
       });
     }
+    
+    console.log('Dane wizyty:', { firstName, lastName, phone, email, date, time, notes });
 
     // Sprawdź czy termin jest dostępny
     let availableSlot;
@@ -1628,6 +1631,39 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
     // Dodajemy wybrane usługi do rezerwacji
     if (services && Array.isArray(services) && services.length > 0) {
       console.log('Dodawanie wybranych usług do rezerwacji:', services);
+      
+      // Sprawdzamy czy tabela appointment_services istnieje, jeśli nie, tworzymy ją
+      try {
+        if (dbType === 'postgres') {
+          await db.execute(`
+            CREATE TABLE IF NOT EXISTS appointment_services (
+              id SERIAL PRIMARY KEY,
+              appointment_id INTEGER NOT NULL,
+              service_id INTEGER,
+              service_name VARCHAR(255) NOT NULL,
+              price DECIMAL(10,2) NOT NULL,
+              duration INTEGER NOT NULL DEFAULT 0,
+              FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+            )
+          `);
+        } else {
+          await db.execute(`
+            CREATE TABLE IF NOT EXISTS appointment_services (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              appointment_id INT NOT NULL,
+              service_id INT,
+              service_name VARCHAR(255) NOT NULL,
+              price DECIMAL(10,2) NOT NULL,
+              duration INT NOT NULL DEFAULT 0,
+              FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+            )
+          `);
+        }
+        console.log('Tabela appointment_services została utworzona lub już istnieje');
+      } catch (tableError) {
+        console.error('Błąd tworzenia tabeli appointment_services:', tableError);
+        // Kontynuujemy mimo błędu, może tabela już istnieje
+      }
       
       // Dodajemy każdą usługę do tabeli appointment_services
       for (const service of services) {
