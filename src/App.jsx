@@ -20,7 +20,6 @@ import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import AdminPanelModal from './components/AdminPanelModal'
 import BookingPage from './pages/BookingPage'
-import BookingForm from './components/BookingForm'
 import BookingModal from './components/BookingModal'
 import ClientPanel from './components/ClientPanel'
 import MetamorphosisModal from './components/MetamorphosisModal'
@@ -81,21 +80,13 @@ const HomePage = ({ user, onBookingClick, showBookingForm, setShowBookingForm, h
       
       {/* Modal umawiania wizyty */}
       {showBookingForm && (
-        user && user.role === 'user' ? (
-          <BookingForm 
-            user={user}
-            onClose={() => setShowBookingForm(false)}
-            onSuccess={handleBookingSuccess}
-          />
-        ) : (
-          <BookingModal 
-            isOpen={true}
-            onClose={() => setShowBookingForm(false)}
-            selectedDate={new Date().toISOString().split('T')[0]}
-            selectedTime="10:00"
-            onSuccess={() => {}}
-          />
-        )
+        <BookingModal 
+          isOpen={true}
+          onClose={() => setShowBookingForm(false)}
+          selectedDate={new Date().toISOString().split('T')[0]}
+          selectedTime="10:00"
+          onSuccess={() => {}}
+        />
       )}
       
       {/* Panel klienta */}

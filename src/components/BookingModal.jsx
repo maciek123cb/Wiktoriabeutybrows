@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Calendar as CalendarIcon, Clock } from 'lucide-react'
 import { API_URL } from '../config'
-import GuestAppointmentSchedule from './GuestAppointmentSchedule'
+import AppointmentSchedule from './AppointmentSchedule'
 import Calendar from './Calendar'
 
 const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }) => {
@@ -125,7 +125,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
             
             {/* Dostępne terminy i informacje */}
             <div>
-              <GuestAppointmentSchedule 
+              <AppointmentSchedule 
                 selectedDate={currentDate} 
                 selectedTime={currentTime} 
               />
