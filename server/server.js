@@ -884,7 +884,7 @@ app.get('/api/available-dates', async (req, res) => {
     // Jeśli nie ma slotów w bazie, zwróć pustą tablicę
     if (!slotsCheck[0] || slotsCheck[0].count === 0) {
       console.log('Brak slotów w bazie, zwracam pustą tablicę');
-      return res.json({ dates: [] });
+      return res.json({ dates: [], dateStatuses: {} });
     }
     
     let query;
@@ -921,11 +921,22 @@ app.get('/api/available-dates', async (req, res) => {
       }
     }).filter(date => date !== null); // Filtruj nieprawidłowe daty
     
+    // Pobierz status dla każdej daty
+    const getDateStatus = require('./date-status');
+    const dateStatuses = {};
+    
+    for (const date of dates) {
+      const status = await getDateStatus(db, dbType, date);
+      dateStatuses[date] = status;
+    }
+    
     console.log('Sformatowane daty:', dates);
-    return res.json({ dates });
+    console.log('Statusy dat:', dateStatuses);
+    
+    return res.json({ dates, dateStatuses });
   } catch (error) {
     console.error('Błąd pobierania dat:', error);
-    return res.json({ dates: [] }); // Zwracamy pustą tablicę w przypadku błędu
+    return res.json({ dates: [], dateStatuses: {} }); // Zwracamy puste dane w przypadku błędu
   }
 });
 

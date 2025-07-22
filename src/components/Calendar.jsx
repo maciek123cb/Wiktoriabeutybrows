@@ -6,6 +6,7 @@ import { API_URL } from '../config'
 const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availableDates: propAvailableDates = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [availableDates, setAvailableDates] = useState([])
+  const [dateStatuses, setDateStatuses] = useState({})
   const [selectedDate, setSelectedDate] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -80,13 +81,16 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
         return;
       }
       
-      const data = await response.json().catch(e => ({ dates: [] }));
+      const data = await response.json().catch(e => ({ dates: [], dateStatuses: {} }));
       
       // Zawsze używaj tablicy, nawet jeśli data.dates jest undefined lub null
       const safeDates = Array.isArray(data.dates) ? data.dates : [];
+      const safeStatuses = data.dateStatuses || {};
       
       console.log('Pobrane dostępne daty:', safeDates);
+      console.log('Pobrane statusy dat:', safeStatuses);
       setAvailableDates(safeDates);
+      setDateStatuses(safeStatuses);
       
       if (!response.ok) {
         throw new Error(`Błąd HTTP: ${response.status}`);
@@ -124,6 +128,33 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     return days
   }
 
+  const getDateStatus = (date) => {
+    if (!date) return { available: false, status: 'none' }
+    
+    // W trybie admina wszystkie daty są dostępne
+    if (isAdmin) return { available: true, status: 'admin' };
+    
+    // Formatuj datę w formacie YYYY-MM-DD
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    
+    // Pobierz status daty
+    const status = dateStatuses[dateStr] || { status: 'none' };
+    
+    // Sprawdzamy, czy data jest w tablicy dostępnych dat
+    const isAvailable = Array.isArray(availableDates) && availableDates.length > 0 && availableDates.includes(dateStr);
+    
+    return { 
+      available: isAvailable, 
+      status: status.status,
+      availableCount: status.availableCount || 0,
+      bookedCount: status.bookedCount || 0,
+      totalCount: status.totalCount || 0
+    };
+  }
+  
   const isDateAvailable = (date) => {
     if (!date) return false
     
@@ -252,6 +283,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
             return <div key={index} className="p-2 h-10"></div>
           }
 
+          const dateStatus = getDateStatus(date)
           const isAvailable = isDateAvailable(date)
           const isPast = isDateInPast(date)
           const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString()
@@ -265,8 +297,12 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           } else if (isToday) {
             buttonClass += "ring-2 ring-primary/30 "
             if (isAdmin) {
-              if (dateHasSlots) {
+              if (dateStatus.status === 'available') {
                 buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 "
+              } else if (dateStatus.status === 'mixed') {
+                buttonClass += "bg-gradient-to-r from-green-100 to-red-100 text-gray-800 hover:from-green-200 hover:to-red-200 "
+              } else if (dateStatus.status === 'booked') {
+                buttonClass += "bg-red-100 text-red-800 hover:bg-red-200 "
               } else {
                 buttonClass += "hover:bg-primary/10 text-gray-700 "
               }
@@ -278,8 +314,12 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
               buttonClass += "text-gray-400 cursor-not-allowed "
             }
           } else if (isAdmin) {
-            if (dateHasSlots) {
+            if (dateStatus.status === 'available') {
               buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 "
+            } else if (dateStatus.status === 'mixed') {
+              buttonClass += "bg-gradient-to-r from-green-100 to-red-100 text-gray-800 hover:from-green-200 hover:to-red-200 "
+            } else if (dateStatus.status === 'booked') {
+              buttonClass += "bg-red-100 text-red-800 hover:bg-red-200 "
             } else {
               buttonClass += "hover:bg-primary/10 text-gray-700 "
             }
@@ -316,11 +356,19 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           <>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-100 rounded"></div>
-              <span className="text-gray-600">Z terminami</span>
+              <span className="text-gray-600">Wszystkie terminy dostępne</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-gray-200 rounded"></div>
-              <span className="text-gray-600">Bez terminów</span>
+              <div className="w-3 h-3 bg-gradient-to-r from-green-100 to-red-100 rounded"></div>
+              <span className="text-gray-600">Część terminów zajęta</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-red-100 rounded"></div>
+              <span className="text-gray-600">Wszystkie terminy zajęte</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-white border border-gray-200 rounded"></div>
+              <span className="text-gray-600">Brak terminów</span>
             </div>
           </>
         ) : (
