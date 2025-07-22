@@ -420,7 +420,7 @@ const AppointmentCalendar = () => {
                     ))}
                   </div>
                 </div>
-              ))
+              )}
               
               {loading ? (
                 <div className="flex justify-center py-8">
