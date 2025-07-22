@@ -1,16 +1,28 @@
 // Funkcja do konwersji parametrów dla PostgreSQL
 function convertParams(params) {
   return params.map(param => {
+    // Obsługa wartości null/undefined
+    if (param === null || param === undefined) {
+      return null;
+    }
+    
+    // Konwersja wartości boolean
+    if (param === true || param === 'true' || param === 1) {
+      return true;
+    }
+    if (param === false || param === 'false' || param === 0) {
+      return false;
+    }
+    
     // Konwersja wartości liczbowych zapisanych jako stringi
     if (typeof param === 'string' && !isNaN(Number(param))) {
       return Number(param);
     }
     
-    // Konwersja wartości boolean
-    if (param === 1 && typeof param === 'number') return true;
-    if (param === 0 && typeof param === 'number') return false;
-    if (param === 'true') return true;
-    if (param === 'false') return false;
+    // Dla wartości decimal/numeric upewnij się, że są liczbami
+    if (param === 'NaN' || param === NaN) {
+      return 0;
+    }
     
     return param;
   });

@@ -1567,8 +1567,22 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
     
     // Upewnij się, że totalPrice i totalDuration są liczbami
     // Konwertujemy na liczby i upewniamy się, że nie są NaN
-    const numericTotalPrice = Number(parseFloat(totalPrice || 0));
-    const numericTotalDuration = Number(parseInt(totalDuration || 0));
+    let numericTotalPrice = 0;
+    let numericTotalDuration = 0;
+    
+    try {
+      numericTotalPrice = Number(parseFloat(totalPrice || 0));
+      if (isNaN(numericTotalPrice)) numericTotalPrice = 0;
+    } catch (e) {
+      numericTotalPrice = 0;
+    }
+    
+    try {
+      numericTotalDuration = Number(parseInt(totalDuration || 0));
+      if (isNaN(numericTotalDuration)) numericTotalDuration = 0;
+    } catch (e) {
+      numericTotalDuration = 0;
+    }
     
     console.log('Wartości przed zapisem:', { 
       userId, 
@@ -1580,16 +1594,27 @@ app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
     });
     
     try {
+      // Upewnij się, że wartości są liczbami, a nie stringami
+      const price = typeof numericTotalPrice === 'number' ? numericTotalPrice : 0;
+      const duration = typeof numericTotalDuration === 'number' ? numericTotalDuration : 0;
+      
+      console.log('Wartości przed zapisem (po konwersji):', { 
+        price: price, 
+        duration: duration,
+        typePrice: typeof price,
+        typeDuration: typeof duration
+      });
+      
       if (dbType === 'postgres') {
         const [result] = await db.execute(
           "INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4, 'confirmed', $5, $6) RETURNING id",
-          [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
+          [userId, date, time, notes || '', price, duration]
         );
         appointmentId = result[0].id;
       } else {
         const [result] = await db.execute(
           'INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES (?, ?, ?, ?, "confirmed", ?, ?)',
-          [userId, date, time, notes || '', numericTotalPrice, numericTotalDuration]
+          [userId, date, time, notes || '', price, duration]
         );
         appointmentId = result.insertId;
       }
