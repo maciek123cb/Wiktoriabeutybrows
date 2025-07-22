@@ -32,8 +32,9 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const searchUsers = async (query) => {
-    if (query.length < 2) {
+  const searchUsers = async (query, field) => {
+    // Wyszukiwanie już po jednej literze
+    if (!query || query.length < 1) {
       setSuggestions([])
       setShowSuggestions(false)
       return
@@ -41,14 +42,53 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
 
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/admin/users/search?q=${encodeURIComponent(query)}`, {
+      const response = await fetch(`${API_URL}/api/admin/users/search?q=${encodeURIComponent(query)}&field=${field}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
       if (response.ok) {
         const data = await response.json()
-        setSuggestions(data.users || [])
-        setShowSuggestions(data.users && data.users.length > 0)
+        const users = data.users || []
+        
+        // Sortujemy wyniki, aby najlepsze dopasowania były na górze
+        const sortedUsers = users.sort((a, b) => {
+          // Priorytetyzujemy dokładne dopasowania
+          const aExactMatch = 
+            (field === 'firstName' && a.first_name.toLowerCase() === query.toLowerCase()) ||
+            (field === 'lastName' && a.last_name.toLowerCase() === query.toLowerCase()) ||
+            (field === 'email' && a.email.toLowerCase() === query.toLowerCase()) ||
+            (field === 'phone' && a.phone === query);
+            
+          const bExactMatch = 
+            (field === 'firstName' && b.first_name.toLowerCase() === query.toLowerCase()) ||
+            (field === 'lastName' && b.last_name.toLowerCase() === query.toLowerCase()) ||
+            (field === 'email' && b.email.toLowerCase() === query.toLowerCase()) ||
+            (field === 'phone' && b.phone === query);
+          
+          if (aExactMatch && !bExactMatch) return -1;
+          if (!aExactMatch && bExactMatch) return 1;
+          
+          // Następnie sortujemy po tym, czy zaczyna się od szukanej frazy
+          const aStartsWith = 
+            (field === 'firstName' && a.first_name.toLowerCase().startsWith(query.toLowerCase())) ||
+            (field === 'lastName' && a.last_name.toLowerCase().startsWith(query.toLowerCase())) ||
+            (field === 'email' && a.email.toLowerCase().startsWith(query.toLowerCase())) ||
+            (field === 'phone' && a.phone.startsWith(query));
+            
+          const bStartsWith = 
+            (field === 'firstName' && b.first_name.toLowerCase().startsWith(query.toLowerCase())) ||
+            (field === 'lastName' && b.last_name.toLowerCase().startsWith(query.toLowerCase())) ||
+            (field === 'email' && b.email.toLowerCase().startsWith(query.toLowerCase())) ||
+            (field === 'phone' && b.phone.startsWith(query));
+          
+          if (aStartsWith && !bStartsWith) return -1;
+          if (!aStartsWith && bStartsWith) return 1;
+          
+          return 0;
+        });
+        
+        setSuggestions(sortedUsers)
+        setShowSuggestions(sortedUsers.length > 0)
       }
     } catch (error) {
       console.error('Błąd wyszukiwania użytkowników:', error)
@@ -69,13 +109,13 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
       
       // Ustaw nowe wyszukiwanie z opóźnieniem
       const timeout = setTimeout(() => {
-        if (value && value.length >= 2) {
-          searchUsers(value)
+        if (value && value.length >= 1) { // Zmieniono z 2 na 1
+          searchUsers(value, field) // Przekazujemy informację o polu
         } else {
           setSuggestions([])
           setShowSuggestions(false)
         }
-      }, 500)
+      }, 300) // Zmniejszono opóźnienie dla lepszej responsywności
       
       setSearchTimeout(timeout)
     }
@@ -197,8 +237,8 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
                   value={formData.firstName}
                   onChange={(e) => handleInputChange('firstName', e.target.value)}
                   onFocus={() => {
-                    if (formData.firstName.length >= 2) {
-                      searchUsers(formData.firstName)
+                    if (formData.firstName.length >= 1) {
+                      searchUsers(formData.firstName, 'firstName')
                     }
                   }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -216,8 +256,8 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
                   value={formData.lastName}
                   onChange={(e) => handleInputChange('lastName', e.target.value)}
                   onFocus={() => {
-                    if (formData.lastName.length >= 2) {
-                      searchUsers(formData.lastName)
+                    if (formData.lastName.length >= 1) {
+                      searchUsers(formData.lastName, 'lastName')
                     }
                   }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -238,8 +278,8 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   onFocus={() => {
-                    if (formData.email.length >= 2) {
-                      searchUsers(formData.email)
+                    if (formData.email.length >= 1) {
+                      searchUsers(formData.email, 'email')
                     }
                   }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -258,8 +298,8 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   onFocus={() => {
-                    if (formData.phone.length >= 3) {
-                      searchUsers(formData.phone)
+                    if (formData.phone.length >= 1) {
+                      searchUsers(formData.phone, 'phone')
                     }
                   }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"

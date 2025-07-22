@@ -1077,22 +1077,63 @@ app.get('/api/admin/users/search', verifyToken, async (req, res) => {
       return res.status(403).json({ message: 'Brak uprawnień' });
     }
 
-    const { q } = req.query;
+    const { q, field } = req.query;
     
-    if (!q || q.length < 2) {
+    // Wyszukiwanie już po jednej literze
+    if (!q || q.length < 1) {
       return res.json({ users: [] });
     }
 
-    const [users] = await db.execute(
-      `SELECT id, first_name, last_name, phone, email, is_active,
-       CASE WHEN password_hash = 'manual_account' THEN 'manual' ELSE 'registered' END as account_type
-       FROM users 
-       WHERE (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?) 
-       AND role != 'admin'
-       ORDER BY first_name, last_name
-       LIMIT 10`,
-      [`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`]
-    );
+    // Budujemy zapytanie w zależności od pola
+    let query = `
+      SELECT id, first_name, last_name, phone, email, is_active,
+      CASE WHEN password_hash = 'manual_account' THEN 'manual' ELSE 'registered' END as account_type
+      FROM users 
+      WHERE `;
+    
+    let params = [];
+    
+    // Jeśli podano konkretne pole, wyszukujemy tylko po nim
+    if (field === 'firstName') {
+      query += `first_name LIKE ? `;
+      params.push(`%${q}%`);
+    } else if (field === 'lastName') {
+      query += `last_name LIKE ? `;
+      params.push(`%${q}%`);
+    } else if (field === 'email') {
+      query += `email LIKE ? `;
+      params.push(`%${q}%`);
+    } else if (field === 'phone') {
+      query += `phone LIKE ? `;
+      params.push(`%${q}%`);
+    } else {
+      // Domyślnie wyszukujemy po wszystkich polach
+      query += `(first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?) `;
+      params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+    }
+    
+    query += `AND role != 'admin' ORDER BY `;
+    
+    // Sortujemy wyniki w zależności od pola
+    if (field === 'firstName') {
+      query += `CASE WHEN first_name LIKE ? THEN 0 ELSE 1 END, first_name, last_name`;
+      params.push(`${q}%`); // Priorytetyzujemy wyniki zaczynające się od szukanej frazy
+    } else if (field === 'lastName') {
+      query += `CASE WHEN last_name LIKE ? THEN 0 ELSE 1 END, last_name, first_name`;
+      params.push(`${q}%`);
+    } else if (field === 'email') {
+      query += `CASE WHEN email LIKE ? THEN 0 ELSE 1 END, email`;
+      params.push(`${q}%`);
+    } else if (field === 'phone') {
+      query += `CASE WHEN phone LIKE ? THEN 0 ELSE 1 END, phone`;
+      params.push(`${q}%`);
+    } else {
+      query += `first_name, last_name`;
+    }
+    
+    query += ` LIMIT 10`;
+
+    const [users] = await db.execute(query, params);
 
     res.json({ users });
   } catch (error) {
