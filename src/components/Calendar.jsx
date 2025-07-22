@@ -131,9 +131,6 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
   const getDateStatus = (date) => {
     if (!date) return { available: false, status: 'none' }
     
-    // W trybie admina wszystkie daty są dostępne
-    if (isAdmin) return { available: true, status: 'admin' };
-    
     // Formatuj datę w formacie YYYY-MM-DD
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -145,6 +142,25 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     
     // Sprawdzamy, czy data jest w tablicy dostępnych dat
     const isAvailable = Array.isArray(availableDates) && availableDates.length > 0 && availableDates.includes(dateStr);
+    
+    // Dla admina, sprawdzamy czy data ma sloty
+    if (isAdmin) {
+      const hasSlot = hasSlots(date);
+      
+      // Logowanie dla debugowania
+      console.log(`Data ${dateStr} - status:`, status, 'hasSlot:', hasSlot);
+      
+      // Jeśli data ma sloty, ale nie ma statusu, ustawiamy status na 'available'
+      if (hasSlot && (!status || status.status === 'none')) {
+        return { 
+          available: true, 
+          status: 'available',
+          availableCount: 1,
+          bookedCount: 0,
+          totalCount: 1
+        };
+      }
+    }
     
     return { 
       available: isAvailable, 
@@ -179,7 +195,7 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
   }
 
   const hasSlots = (date) => {
-    if (!date || !isAdmin) return false
+    if (!date) return false
     
     // Zabezpieczenie przed błędem, jeśli datesWithSlots nie jest tablicą
     if (!Array.isArray(datesWithSlots)) {
@@ -192,7 +208,14 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
-    return datesWithSlots.includes(dateStr)
+    
+    // Dla admina sprawdzamy, czy data jest w tablicy datesWithSlots
+    if (isAdmin) {
+      return datesWithSlots.includes(dateStr);
+    }
+    
+    // Dla zwykłych użytkowników sprawdzamy, czy data jest w tablicy availableDates
+    return Array.isArray(availableDates) && availableDates.includes(dateStr);
   }
 
   const isDateInPast = (date) => {
@@ -289,48 +312,97 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString()
           const isToday = date.toDateString() === new Date().toDateString()
           const dateHasSlots = hasSlots(date)
-
-          let buttonClass = "w-full h-10 rounded-lg text-sm font-medium transition-all duration-200 "
           
-          if (isSelected) {
-            buttonClass += "bg-primary text-white shadow-md "
-          } else if (isToday) {
-            buttonClass += "ring-2 ring-primary/30 "
-            if (isAdmin) {
-              if (dateStatus.status === 'available') {
-                buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 "
-              } else if (dateStatus.status === 'mixed') {
-                buttonClass += "bg-gradient-to-r from-green-100 to-red-100 text-gray-800 hover:from-green-200 hover:to-red-200 "
-              } else if (dateStatus.status === 'booked') {
-                buttonClass += "bg-red-100 text-red-800 hover:bg-red-200 "
-              } else {
-                buttonClass += "hover:bg-primary/10 text-gray-700 "
-              }
-            } else if (isAvailable && !isPast) {
-              buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer "
-            } else if (isPast) {
-              buttonClass += "text-gray-300 cursor-not-allowed "
-            } else {
-              buttonClass += "text-gray-400 cursor-not-allowed "
-            }
-          } else if (isAdmin) {
-            if (dateStatus.status === 'available') {
-              buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 "
-            } else if (dateStatus.status === 'mixed') {
-              buttonClass += "bg-gradient-to-r from-green-100 to-red-100 text-gray-800 hover:from-green-200 hover:to-red-200 "
-            } else if (dateStatus.status === 'booked') {
-              buttonClass += "bg-red-100 text-red-800 hover:bg-red-200 "
-            } else {
-              buttonClass += "hover:bg-primary/10 text-gray-700 "
-            }
-          } else if (isAvailable && !isPast) {
-            buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer "
-          } else if (isPast) {
-            buttonClass += "text-gray-300 cursor-not-allowed "
-          } else {
-            buttonClass += "bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer "
+          // Formatuj datę w formacie YYYY-MM-DD dla logowania
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          const day = String(date.getDate()).padStart(2, '0')
+          const dateStr = `${year}-${month}-${day}`
+          
+          // Logowanie dla debugowania (tylko dla wybranych dat)
+          if (date.getDate() === 1 || date.getDate() === 15) {
+            console.log(`Renderowanie daty ${dateStr}:`, { 
+              dateStatus, 
+              isAvailable, 
+              isPast, 
+              isSelected, 
+              isToday, 
+              dateHasSlots 
+            });
           }
 
+          // Uproszczona logika kolorowania dat
+          let buttonClass = "w-full h-10 rounded-lg text-sm font-medium transition-all duration-200 "
+          
+          // Najpierw sprawdzamy, czy data jest wybrana
+          if (isSelected) {
+            buttonClass += "bg-primary text-white shadow-md ";
+            return (
+              <motion.button
+                key={index}
+                onClick={() => handleDateClick(date)}
+                className={buttonClass}
+                disabled={isPast}
+                whileHover={{ scale: !isPast ? 1.05 : 1 }}
+                whileTap={{ scale: !isPast ? 0.95 : 1 }}
+              >
+                {date.getDate()}
+              </motion.button>
+            );
+          }
+          
+          // Dodajemy obramowanie dla dzisiejszej daty
+          if (isToday) {
+            buttonClass += "ring-2 ring-primary/30 ";
+          }
+          
+          // Dla dat w przeszłości
+          if (isPast) {
+            buttonClass += "text-gray-300 cursor-not-allowed ";
+            return (
+              <motion.button
+                key={index}
+                onClick={() => handleDateClick(date)}
+                className={buttonClass}
+                disabled={true}
+                whileHover={{ scale: 1 }}
+                whileTap={{ scale: 1 }}
+              >
+                {date.getDate()}
+              </motion.button>
+            );
+          }
+          
+          // Dla admina, kolorujemy daty według statusu
+          if (isAdmin) {
+            // Sprawdzamy, czy data ma sloty
+            if (dateHasSlots) {
+              // Sprawdzamy status daty
+              if (dateStatus.status === 'available') {
+                buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 ";
+              } else if (dateStatus.status === 'mixed') {
+                buttonClass += "bg-gradient-to-r from-green-100 to-red-100 text-gray-800 hover:from-green-200 hover:to-red-200 ";
+              } else if (dateStatus.status === 'booked') {
+                buttonClass += "bg-red-100 text-red-800 hover:bg-red-200 ";
+              } else {
+                // Jeśli data ma sloty, ale nie ma statusu, kolorujemy na zielono
+                buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 ";
+              }
+            } else {
+              // Jeśli data nie ma slotów, zostawiamy białe tło
+              buttonClass += "bg-white text-gray-700 hover:bg-gray-50 ";
+            }
+          } 
+          // Dla zwykłych użytkowników
+          else {
+            if (isAvailable) {
+              buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer ";
+            } else {
+              buttonClass += "bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer ";
+            }
+          }
+
+          // Zwracamy przycisk z odpowiednią klasą
           return (
             <motion.button
               key={index}
