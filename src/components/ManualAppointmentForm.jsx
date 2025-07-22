@@ -111,7 +111,9 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
     
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/admin/appointments/manual`, {
+      
+      // Próbujemy najpierw nowego endpointu
+      let response = await fetch(`${API_URL}/api/admin/manual-appointments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -119,16 +121,40 @@ const ManualAppointmentForm = ({ onClose, onSuccess, selectedDate, availableSlot
         },
         body: JSON.stringify(formData)
       })
-
-      const data = await response.json()
       
-      if (data.success) {
-        onSuccess(data.message)
+      // Jeśli nowy endpoint nie zadziała, próbujemy starego
+      if (response.status === 404) {
+        console.log('Nowy endpoint niedostępny, próbuję starego...')
+        response = await fetch(`${API_URL}/api/admin/appointments/manual`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ...formData,
+            // Upewnij się, że przekazujemy liczby jako liczby
+            totalPrice: 0,
+            totalDuration: 0
+          })
+        })
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          onSuccess(data.message)
+        } else {
+          alert(data.message || 'Wystąpił błąd podczas dodawania wizyty')
+        }
       } else {
-        alert(data.message)
+        const errorText = await response.text()
+        console.error('Błąd odpowiedzi serwera:', response.status, errorText)
+        alert(`Błąd serwera: ${response.status}. Spróbuj ponownie później.`)
       }
     } catch (error) {
-      alert('Błąd połączenia z serwerem')
+      console.error('Błąd połączenia z serwerem:', error)
+      alert('Błąd połączenia z serwerem. Spróbuj ponownie później.')
     } finally {
       setLoading(false)
     }

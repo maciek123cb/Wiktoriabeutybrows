@@ -1449,246 +1449,37 @@ app.delete('/api/admin/appointments/:id', verifyToken, async (req, res) => {
   }
 });
 
-// DODAWANIE WIZYTY RĘCZNIE PRZEZ ADMINA
+// DODAWANIE WIZYTY RĘCZNIE PRZEZ ADMINA - nowa implementacja
 app.post('/api/admin/appointments/manual', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Brak uprawnień' });
     }
-
-    const { firstName, lastName, phone, email, date, time, notes, services, totalPrice } = req.body;
-
-    // Walidacja danych
-    if (!firstName || !lastName || !phone || !email || !date || !time) {
-      console.error('Brakujące dane:', { firstName, lastName, phone, email, date, time });
-      return res.status(400).json({
-        success: false,
-        message: 'Wszystkie pola są wymagane'
-      });
-    }
     
-    console.log('Dane wizyty:', { firstName, lastName, phone, email, date, time, notes });
-
-    // Sprawdź czy termin jest dostępny
-    let availableSlot;
-    if (dbType === 'postgres') {
-      [availableSlot] = await db.execute(
-        "SELECT id FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND time = $2",
-        [date, time]
-      );
-    } else {
-      [availableSlot] = await db.execute(
-        'SELECT id FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND time = ?',
-        [date, time]
-      );
-    }
-
-    if (availableSlot.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Ten termin nie jest dostępny w systemie'
-      });
-    }
-
-    // Sprawdź czy termin nie jest już zarezerwowany
-    let existingAppointment;
-    if (dbType === 'postgres') {
-      [existingAppointment] = await db.execute(
-        "SELECT id FROM appointments WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND time = $2 AND status != 'cancelled'",
-        [date, time]
-      );
-    } else {
-      [existingAppointment] = await db.execute(
-        'SELECT id FROM appointments WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND time = ? AND status != "cancelled"',
-        [date, time]
-      );
-    }
-
-    if (existingAppointment.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: 'Ten termin jest już zajęty'
-      });
-    }
-
-    // Utwórz tymczasowego użytkownika lub znajdź istniejącego
-    let userId;
-    let existingUser;
+    // Używamy nowego modułu do dodawania ręcznych wizyt
+    const addManualAppointment = require('./manual-appointment');
+    await addManualAppointment(req, res, db, dbType);
     
-    if (dbType === 'postgres') {
-      [existingUser] = await db.execute(
-        'SELECT id FROM users WHERE email = $1',
-        [email]
-      );
-    } else {
-      [existingUser] = await db.execute(
-        'SELECT id FROM users WHERE email = ?',
-        [email]
-      );
-    }
-
-    if (existingUser.length > 0) {
-      userId = existingUser[0].id;
-    } else {
-      // Utwórz użytkownika dodanego ręcznie
-      let result;
-      if (dbType === 'postgres') {
-        [result] = await db.execute(
-          "INSERT INTO users (first_name, last_name, phone, email, password_hash, is_active, role) VALUES ($1, $2, $3, $4, 'manual_account', TRUE, 'user') RETURNING id",
-          [firstName, lastName, phone, email]
-        );
-        userId = result[0].id;
-      } else {
-        [result] = await db.execute(
-          'INSERT INTO users (first_name, last_name, phone, email, password_hash, is_active, role) VALUES (?, ?, ?, ?, "manual_account", TRUE, "user")',
-          [firstName, lastName, phone, email]
-        );
-        userId = result.insertId;
-      }
-    }
-
-    // Obliczamy łączny czas trwania usług
-    let totalDuration = 0;
-    if (services && Array.isArray(services) && services.length > 0) {
-      totalDuration = services.reduce((sum, service) => sum + (service.duration || 0), 0);
-      console.log('Całkowity czas trwania usług:', totalDuration, 'minut');
-      
-      // Maksymalny czas to 90 minut (1:30h)
-      if (totalDuration > 90) {
-        return res.status(400).json({
-          success: false,
-          message: 'Czas trwania wybranych usług przekracza 1:30h. Na dłuższe wizyty prosimy umawiać się telefonicznie.'
-        });
-      }
-    }
-    
-    // Dodaj wizytę jako potwierdzoną
-    let appointmentId;
-    
-    // Upewnij się, że totalPrice i totalDuration są liczbami
-    // Konwertujemy na liczby i upewniamy się, że nie są NaN
-    let numericTotalPrice = 0;
-    let numericTotalDuration = 0;
-    
-    try {
-      numericTotalPrice = Number(parseFloat(totalPrice || 0));
-      if (isNaN(numericTotalPrice)) numericTotalPrice = 0;
-    } catch (e) {
-      numericTotalPrice = 0;
-    }
-    
-    try {
-      numericTotalDuration = Number(parseInt(totalDuration || 0));
-      if (isNaN(numericTotalDuration)) numericTotalDuration = 0;
-    } catch (e) {
-      numericTotalDuration = 0;
-    }
-    
-    console.log('Wartości przed zapisem:', { 
-      userId, 
-      date, 
-      time, 
-      notes: notes || '', 
-      totalPrice: numericTotalPrice, 
-      totalDuration: numericTotalDuration 
+  } catch (error) {
+    console.error('Błąd dodawania wizyty ręcznie:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Błąd serwera podczas dodawania wizyty'
     });
-    
-    try {
-      // Upewnij się, że wartości są liczbami, a nie stringami
-      const price = typeof numericTotalPrice === 'number' ? numericTotalPrice : 0;
-      const duration = typeof numericTotalDuration === 'number' ? numericTotalDuration : 0;
-      
-      console.log('Wartości przed zapisem (po konwersji):', { 
-        price: price, 
-        duration: duration,
-        typePrice: typeof price,
-        typeDuration: typeof duration
-      });
-      
-      if (dbType === 'postgres') {
-        const [result] = await db.execute(
-          "INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES ($1, TO_DATE($2, 'YYYY-MM-DD'), $3, $4, 'confirmed', $5, $6) RETURNING id",
-          [userId, date, time, notes || '', price, duration]
-        );
-        appointmentId = result[0].id;
-      } else {
-        const [result] = await db.execute(
-          'INSERT INTO appointments (user_id, date, time, notes, status, total_price, total_duration) VALUES (?, ?, ?, ?, "confirmed", ?, ?)',
-          [userId, date, time, notes || '', price, duration]
-        );
-        appointmentId = result.insertId;
-      }
-      console.log('Wizyta dodana pomyślnie, ID:', appointmentId);
-    } catch (insertError) {
-      console.error('Błąd dodawania wizyty:', insertError);
-      return res.status(500).json({
-        success: false,
-        message: 'Błąd dodawania wizyty: ' + insertError.message
-      });
-    }
-    
-    // Dodajemy wybrane usługi do rezerwacji
-    if (services && Array.isArray(services) && services.length > 0) {
-      console.log('Dodawanie wybranych usług do rezerwacji:', services);
-      
-      // Sprawdzamy czy tabela appointment_services istnieje, jeśli nie, tworzymy ją
-      try {
-        if (dbType === 'postgres') {
-          await db.execute(`
-            CREATE TABLE IF NOT EXISTS appointment_services (
-              id SERIAL PRIMARY KEY,
-              appointment_id INTEGER NOT NULL,
-              service_id INTEGER,
-              service_name VARCHAR(255) NOT NULL,
-              price DECIMAL(10,2) NOT NULL,
-              duration INTEGER NOT NULL DEFAULT 0,
-              FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
-            )
-          `);
-        } else {
-          await db.execute(`
-            CREATE TABLE IF NOT EXISTS appointment_services (
-              id INT AUTO_INCREMENT PRIMARY KEY,
-              appointment_id INT NOT NULL,
-              service_id INT,
-              service_name VARCHAR(255) NOT NULL,
-              price DECIMAL(10,2) NOT NULL,
-              duration INT NOT NULL DEFAULT 0,
-              FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
-            )
-          `);
-        }
-        console.log('Tabela appointment_services została utworzona lub już istnieje');
-      } catch (tableError) {
-        console.error('Błąd tworzenia tabeli appointment_services:', tableError);
-        // Kontynuujemy mimo błędu, może tabela już istnieje
-      }
-      
-      // Dodajemy każdą usługę do tabeli appointment_services
-      for (const service of services) {
-        try {
-          if (dbType === 'postgres') {
-            await db.execute(
-              'INSERT INTO appointment_services (appointment_id, service_id, service_name, price, duration) VALUES ($1, $2, $3, $4, $5)',
-              [appointmentId, service.id || null, service.name, service.price || 0, service.duration || 0]
-            );
-          } else {
-            await db.execute(
-              'INSERT INTO appointment_services (appointment_id, service_id, service_name, price, duration) VALUES (?, ?, ?, ?, ?)',
-              [appointmentId, service.id || null, service.name, service.price || 0, service.duration || 0]
-            );
-          }
-        } catch (serviceError) {
-          console.error('Błąd dodawania usługi do rezerwacji:', serviceError);
-          // Kontynuujemy mimo błędu, aby dodać pozostałe usługi
-        }
-      }
-    }
+  }
+});
 
-    res.json({
-      success: true,
-      message: 'Wizyta została dodana'
-    });
+// Dodatkowy endpoint dla ręcznego dodawania wizyt (alternatywna ścieżka)
+app.post('/api/admin/manual-appointments', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Brak uprawnień' });
+    }
+    
+    // Używamy nowego modułu do dodawania ręcznych wizyt
+    const addManualAppointment = require('./manual-appointment');
+    await addManualAppointment(req, res, db, dbType);
+    
   } catch (error) {
     console.error('Błąd dodawania wizyty ręcznie:', error);
     res.status(500).json({
