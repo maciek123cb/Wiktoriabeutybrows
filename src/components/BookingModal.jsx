@@ -162,6 +162,12 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
     e.preventDefault()
     
     if (!validateForm()) return
+    
+    // Sprawdzamy czy łączny czas nie przekracza 90 minut
+    if (isTotalDurationExceeded()) {
+      setErrors({ general: 'Wybrane usługi trwają łącznie ponad 1:30h. Prosimy o kontakt telefoniczny w celu rezerwacji.' })
+      return
+    }
 
     setIsLoading(true)
 
@@ -183,9 +189,11 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
           services: selectedServices.map(service => ({
             id: service.id,
             name: service.name,
-            price: service.price
+            price: service.price,
+            duration: service.duration
           })),
-          totalPrice: calculateTotalPrice()
+          totalPrice: calculateTotalPrice(),
+          totalDuration: calculateTotalDuration()
         })
       })
 
@@ -238,6 +246,16 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
   // Funkcja do obliczania łącznej ceny wybranych usług
   const calculateTotalPrice = () => {
     return selectedServices.reduce((sum, service) => sum + parseFloat(service.price), 0)
+  }
+  
+  // Funkcja do obliczania łącznego czasu trwania wybranych usług
+  const calculateTotalDuration = () => {
+    return selectedServices.reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0)
+  }
+  
+  // Funkcja sprawdzająca czy łączny czas przekracza 90 minut (1:30h)
+  const isTotalDurationExceeded = () => {
+    return calculateTotalDuration() > 90
   }
   
   // Funkcja sprawdzająca czy usługa jest wybrana
@@ -324,7 +342,15 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
                                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-2 ${isServiceSelected(service.id) ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
                                   {isServiceSelected(service.id) && <Check className="w-3 h-3 text-white" />}
                                 </div>
-                                <span className="text-sm text-green-800">{service.name}</span>
+                                <div>
+                                  <span className="text-sm text-green-800">{service.name}</span>
+                                  {service.duration && (
+                                    <div className="text-xs text-gray-500 flex items-center mt-1">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      {service.duration} min
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <span className="text-sm font-semibold text-green-800">
                                 {typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : (service.price && !isNaN(parseFloat(service.price)) ? `${parseFloat(service.price).toFixed(2)} zł` : service.price)}
@@ -347,13 +373,26 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
                     <div className="space-y-1">
                       {selectedServices.map((service) => (
                         <div key={service.id} className="flex justify-between text-sm">
-                          <span>{service.name}</span>
+                          <div>
+                            <span>{service.name}</span>
+                            {service.duration && (
+                              <span className="text-xs text-gray-500 ml-2">
+                                ({service.duration} min)
+                              </span>
+                            )}
+                          </div>
                           <span className="font-medium">{typeof service.price === 'number' ? `${service.price.toFixed(2)} zł` : (service.price && !isNaN(parseFloat(service.price)) ? `${parseFloat(service.price).toFixed(2)} zł` : service.price)}</span>
                         </div>
                       ))}
-                      <div className="border-t border-green-300 mt-2 pt-2 flex justify-between font-bold text-green-800">
-                        <span>Razem:</span>
-                        <span>{parseFloat(calculateTotalPrice()).toFixed(2)} zł</span>
+                      <div className="border-t border-green-300 mt-2 pt-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Czas trwania:</span>
+                          <span className="font-medium">{calculateTotalDuration()} min</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-green-800 mt-1">
+                          <span>Razem:</span>
+                          <span>{parseFloat(calculateTotalPrice()).toFixed(2)} zł</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -372,8 +411,25 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
           )}
 
           {isLoggedIn ? (
-            /* Formularz dla zalogowanych użytkowników */
-            <form onSubmit={handleSubmit} className="space-y-4">
+            /* Komunikat o konieczności rezerwacji telefonicznej */
+            isTotalDurationExceeded() ? (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Phone className="w-5 h-5 text-amber-600" />
+                  <h3 className="font-semibold">Rezerwacja tylko telefoniczna</h3>
+                </div>
+                <p className="text-sm">
+                  Wybrane usługi trwają łącznie ponad 1:30h. Prosimy o kontakt telefoniczny w celu rezerwacji.
+                  {contactInfo && (
+                    <a href={`tel:${contactInfo.phone}`} className="text-primary hover:underline ml-1">
+                      {contactInfo.phone}
+                    </a>
+                  )}
+                </p>
+              </div>
+            ) : (
+              /* Formularz dla zalogowanych użytkowników */
+              <form onSubmit={handleSubmit} className="space-y-4">
               {/* Imię i nazwisko */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -476,6 +532,7 @@ const BookingModal = ({ isOpen, onClose, selectedDate, selectedTime, onSuccess }
                 </button>
               </div>
             </form>
+            )
           ) : (
             /* Informacje dla niezalogowanych użytkowników */
             <div className="space-y-6">

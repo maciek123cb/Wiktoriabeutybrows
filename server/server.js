@@ -175,6 +175,35 @@ async function initializeDatabase() {
     if (success) {
       console.log('Baza danych została zainicjalizowana pomyślnie');
       
+      // Sprawdzamy czy kolumna duration istnieje w tabeli services
+      try {
+        if (dbType === 'postgres') {
+          const [columnCheck] = await db.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'services' AND column_name = 'duration'"
+          );
+          
+          if (columnCheck.length === 0) {
+            await db.execute(
+              "ALTER TABLE services ADD COLUMN duration INTEGER NOT NULL DEFAULT 0"
+            );
+            console.log('Dodano kolumnę duration do tabeli services');
+          }
+        } else {
+          const [columnCheck] = await db.execute(
+            "SELECT COUNT(*) as count FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'services' AND column_name = 'duration'"
+          );
+          
+          if (columnCheck[0].count === 0) {
+            await db.execute(
+              "ALTER TABLE services ADD COLUMN duration INT NOT NULL DEFAULT 0"
+            );
+            console.log('Dodano kolumnę duration do tabeli services');
+          }
+        }
+      } catch (alterError) {
+        console.error('Błąd sprawdzania/dodawania kolumny duration w tabeli services:', alterError);
+      }
+      
       // Dodajemy kolumnę total_price do tabeli appointments, jeśli nie istnieje
       try {
         if (dbType === 'postgres') {
@@ -1665,12 +1694,17 @@ async function startServer() {
 app.get('/api/services', async (req, res) => {
   try {
     try {
+      // Jawnie wymieniamy wszystkie kolumny, w tym duration
       const [services] = await db.execute(
-        'SELECT * FROM services WHERE is_active = TRUE ORDER BY category, name'
+        'SELECT id, name, description, price, duration, category, is_active FROM services WHERE is_active = TRUE ORDER BY category, name'
       );
       
       // Zawsze zwracamy tablicę, nawet jeśli jest pusta
       const safeServices = Array.isArray(services) ? services : [];
+      
+      // Logujemy dla debugowania
+      console.log('Pobrano usługi z czasem trwania:', safeServices.map(s => ({ id: s.id, name: s.name, duration: s.duration })));
+      
       res.json({ services: safeServices });
     } catch (dbError) {
       console.error('Błąd zapytania do bazy danych:', dbError);
@@ -1691,8 +1725,12 @@ app.get('/api/admin/services', verifyToken, async (req, res) => {
     }
     
     const [services] = await db.execute(
-      'SELECT * FROM services ORDER BY category, name'
+      'SELECT id, name, description, price, duration, category, is_active, created_at, updated_at FROM services ORDER BY category, name'
     );
+    
+    // Logujemy dla debugowania
+    console.log('Admin - pobrano usługi z czasem trwania:', services.map(s => ({ id: s.id, name: s.name, duration: s.duration })));
+    
     res.json({ services });
   } catch (error) {
     console.error('Błąd pobierania usług:', error);
@@ -1708,10 +1746,21 @@ app.post('/api/admin/services', verifyToken, async (req, res) => {
     
     const { name, description, price, duration, category } = req.body;
     
-    await db.execute(
-      'INSERT INTO services (name, description, price, duration, category) VALUES (?, ?, ?, ?, ?)',
-      [name, description, price, duration, category]
-    );
+    // Upewniamy się, że duration jest liczbą
+    const parsedDuration = parseInt(duration) || 0;
+    console.log('Dodawanie usługi z czasem trwania:', parsedDuration, 'minut');
+    
+    if (dbType === 'postgres') {
+      await db.execute(
+        'INSERT INTO services (name, description, price, duration, category) VALUES ($1, $2, $3, $4, $5)',
+        [name, description, price, parsedDuration, category]
+      );
+    } else {
+      await db.execute(
+        'INSERT INTO services (name, description, price, duration, category) VALUES (?, ?, ?, ?, ?)',
+        [name, description, price, parsedDuration, category]
+      );
+    }
     
     res.json({ success: true, message: 'Usługa została dodana' });
   } catch (error) {
@@ -1729,10 +1778,21 @@ app.put('/api/admin/services/:id', verifyToken, async (req, res) => {
     const { id } = req.params;
     const { name, description, price, duration, category, is_active } = req.body;
     
-    await db.execute(
-      'UPDATE services SET name = ?, description = ?, price = ?, duration = ?, category = ?, is_active = ? WHERE id = ?',
-      [name, description, price, duration, category, is_active, id]
-    );
+    // Upewniamy się, że duration jest liczbą
+    const parsedDuration = parseInt(duration) || 0;
+    console.log('Aktualizacja usługi z ID:', id, 'czas trwania:', parsedDuration, 'minut');
+    
+    if (dbType === 'postgres') {
+      await db.execute(
+        'UPDATE services SET name = $1, description = $2, price = $3, duration = $4, category = $5, is_active = $6 WHERE id = $7',
+        [name, description, price, parsedDuration, category, is_active, id]
+      );
+    } else {
+      await db.execute(
+        'UPDATE services SET name = ?, description = ?, price = ?, duration = ?, category = ?, is_active = ? WHERE id = ?',
+        [name, description, price, parsedDuration, category, is_active, id]
+      );
+    }
     
     res.json({ success: true, message: 'Usługa została zaktualizowana' });
   } catch (error) {
