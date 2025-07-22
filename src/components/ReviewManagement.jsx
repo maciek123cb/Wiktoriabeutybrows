@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Trash2, Star, Calendar, User } from 'lucide-react'
+import { Trash2, Star, Calendar, User, Check, X } from 'lucide-react'
 import { API_URL } from '../config'
 
 const ReviewManagement = () => {
@@ -34,6 +34,29 @@ const ReviewManagement = () => {
       const response = await fetch(`${API_URL}/api/admin/reviews/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        fetchReviews()
+        alert(data.message)
+      }
+    } catch (error) {
+      alert('Błąd połączenia z serwerem')
+    }
+  }
+  
+  const approveReview = async (id, isApproved) => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/admin/reviews/${id}/approve`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_approved: isApproved })
       })
 
       const data = await response.json()
@@ -128,13 +151,33 @@ const ReviewManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => deleteReview(review.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Usuń opinię"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex space-x-2 justify-center">
+                        {!review.is_approved && (
+                          <button
+                            onClick={() => approveReview(review.id, true)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Zatwierdź opinię"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        )}
+                        {review.is_approved && (
+                          <button
+                            onClick={() => approveReview(review.id, false)}
+                            className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            title="Cofnij zatwierdzenie"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteReview(review.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Usuń opinię"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

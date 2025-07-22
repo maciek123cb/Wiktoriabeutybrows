@@ -1970,6 +1970,31 @@ app.get('/api/contact-info', async (req, res) => {
 // ENDPOINTY DLA OPINII
 app.get('/api/reviews', async (req, res) => {
   try {
+    // Sprawdź czy tabela reviews istnieje
+    let tableExists = false;
+    try {
+      if (dbType === 'postgres') {
+        const [result] = await db.execute(
+          "SELECT to_regclass('public.reviews') IS NOT NULL as exists"
+        );
+        tableExists = result[0].exists;
+      } else {
+        const [result] = await db.execute(
+          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'reviews'"
+        );
+        tableExists = result[0].count > 0;
+      }
+    } catch (tableError) {
+      console.error('Błąd sprawdzania istnienia tabeli reviews:', tableError);
+      tableExists = false;
+    }
+    
+    // Jeśli tabela nie istnieje, zwróć pustą tablicę
+    if (!tableExists) {
+      console.log('Tabela reviews nie istnieje, zwracam pustą tablicę');
+      return res.json({ reviews: [] });
+    }
+    
     const { limit } = req.query;
     let query = `
       SELECT r.id, r.rating, r.comment, r.created_at,
@@ -1989,7 +2014,8 @@ app.get('/api/reviews', async (req, res) => {
     res.json({ reviews });
   } catch (error) {
     console.error('Błąd pobierania opinii:', error);
-    res.status(500).json({ message: 'Błąd serwera' });
+    // W przypadku błędu zwróć pustą tablicę
+    res.json({ reviews: [] });
   }
 });
 
@@ -2002,6 +2028,43 @@ app.post('/api/reviews', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Nieprawidłowe dane' });
     }
     
+    // Sprawdź czy tabela reviews istnieje, jeśli nie - utwórz ją
+    try {
+      if (dbType === 'postgres') {
+        await db.execute(`
+          CREATE TABLE IF NOT EXISTS reviews (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            comment TEXT NOT NULL,
+            is_approved BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `);
+      } else {
+        await db.execute(`
+          CREATE TABLE IF NOT EXISTS reviews (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            comment TEXT NOT NULL,
+            is_approved BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `);
+      }
+      console.log('Tabela reviews została utworzona lub już istnieje');
+    } catch (tableError) {
+      console.error('Błąd tworzenia tabeli reviews:', tableError);
+      return res.status(500).json({ 
+        success: false,
+        message: 'Błąd tworzenia tabeli opinii' 
+      });
+    }
+    
+    // Dodaj opinię
     await db.execute(
       'INSERT INTO reviews (user_id, rating, comment) VALUES (?, ?, ?)',
       [userId, rating, comment]
@@ -2020,6 +2083,60 @@ app.get('/api/admin/reviews', verifyToken, async (req, res) => {
       return res.status(403).json({ message: 'Brak uprawnień' });
     }
     
+    // Sprawdź czy tabela reviews istnieje
+    let tableExists = false;
+    try {
+      if (dbType === 'postgres') {
+        const [result] = await db.execute(
+          "SELECT to_regclass('public.reviews') IS NOT NULL as exists"
+        );
+        tableExists = result[0].exists;
+      } else {
+        const [result] = await db.execute(
+          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'reviews'"
+        );
+        tableExists = result[0].count > 0;
+      }
+    } catch (tableError) {
+      console.error('Błąd sprawdzania istnienia tabeli reviews:', tableError);
+      tableExists = false;
+    }
+    
+    // Jeśli tabela nie istnieje, utwórz ją
+    if (!tableExists) {
+      try {
+        if (dbType === 'postgres') {
+          await db.execute(`
+            CREATE TABLE IF NOT EXISTS reviews (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER NOT NULL,
+              rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+              comment TEXT NOT NULL,
+              is_approved BOOLEAN DEFAULT FALSE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+          `);
+        } else {
+          await db.execute(`
+            CREATE TABLE IF NOT EXISTS reviews (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              user_id INT NOT NULL,
+              rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+              comment TEXT NOT NULL,
+              is_approved BOOLEAN DEFAULT FALSE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+          `);
+        }
+        console.log('Tabela reviews została utworzona');
+      } catch (createError) {
+        console.error('Błąd tworzenia tabeli reviews:', createError);
+        return res.json({ reviews: [] });
+      }
+    }
+    
     const [reviews] = await db.execute(`
       SELECT r.id, r.rating, r.comment, r.is_approved, r.created_at,
              u.first_name, u.last_name, u.email
@@ -2031,7 +2148,7 @@ app.get('/api/admin/reviews', verifyToken, async (req, res) => {
     res.json({ reviews });
   } catch (error) {
     console.error('Błąd pobierania opinii:', error);
-    res.status(500).json({ message: 'Błąd serwera' });
+    res.json({ reviews: [] });
   }
 });
 
@@ -2041,12 +2158,82 @@ app.delete('/api/admin/reviews/:id', verifyToken, async (req, res) => {
       return res.status(403).json({ message: 'Brak uprawnień' });
     }
     
+    // Sprawdź czy tabela reviews istnieje
+    let tableExists = false;
+    try {
+      if (dbType === 'postgres') {
+        const [result] = await db.execute(
+          "SELECT to_regclass('public.reviews') IS NOT NULL as exists"
+        );
+        tableExists = result[0].exists;
+      } else {
+        const [result] = await db.execute(
+          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'reviews'"
+        );
+        tableExists = result[0].count > 0;
+      }
+    } catch (tableError) {
+      console.error('Błąd sprawdzania istnienia tabeli reviews:', tableError);
+      tableExists = false;
+    }
+    
+    // Jeśli tabela nie istnieje, zwróć sukces (nie ma co usuwać)
+    if (!tableExists) {
+      return res.json({ success: true, message: 'Tabela opinii nie istnieje' });
+    }
+    
     const { id } = req.params;
     await db.execute('DELETE FROM reviews WHERE id = ?', [id]);
     
     res.json({ success: true, message: 'Opinia została usunięta' });
   } catch (error) {
     console.error('Błąd usuwania opinii:', error);
+    res.status(500).json({ message: 'Błąd serwera' });
+  }
+});
+
+// Endpoint do zatwierdzania opinii
+app.patch('/api/admin/reviews/:id/approve', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Brak uprawnień' });
+    }
+    
+    // Sprawdź czy tabela reviews istnieje
+    let tableExists = false;
+    try {
+      if (dbType === 'postgres') {
+        const [result] = await db.execute(
+          "SELECT to_regclass('public.reviews') IS NOT NULL as exists"
+        );
+        tableExists = result[0].exists;
+      } else {
+        const [result] = await db.execute(
+          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'reviews'"
+        );
+        tableExists = result[0].count > 0;
+      }
+    } catch (tableError) {
+      console.error('Błąd sprawdzania istnienia tabeli reviews:', tableError);
+      tableExists = false;
+    }
+    
+    // Jeśli tabela nie istnieje, zwróć błąd
+    if (!tableExists) {
+      return res.status(404).json({ success: false, message: 'Tabela opinii nie istnieje' });
+    }
+    
+    const { id } = req.params;
+    const { is_approved } = req.body;
+    
+    await db.execute('UPDATE reviews SET is_approved = ? WHERE id = ?', [is_approved, id]);
+    
+    res.json({
+      success: true,
+      message: is_approved ? 'Opinia została zatwierdzona' : 'Opinia została odrzucona'
+    });
+  } catch (error) {
+    console.error('Błąd zatwierdzania opinii:', error);
     res.status(500).json({ message: 'Błąd serwera' });
   }
 });
