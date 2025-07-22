@@ -84,11 +84,17 @@ const AppointmentCalendar = () => {
       const day = String(date.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      const response = await fetch(`${API_URL}/api/available-slots/${dateStr}`)
+      // Pobieramy dostępne sloty z API dla adminów, które zawiera więcej informacji
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/admin/slots/${dateStr}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
       const data = await response.json()
-      setAvailableSlots(data.slots || [])
+      setAvailableSlots(data.available || [])
     } catch (error) {
       console.error('Błąd pobierania dostępnych slotów:', error)
+      setAvailableSlots([])
     }
   }
 
@@ -244,9 +250,17 @@ const AppointmentCalendar = () => {
 
         {/* Panel wizyt */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-            <CalendarIcon className="w-5 h-5 mr-2" />
-            Wizyty na wybrany dzień
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <CalendarIcon className="w-5 h-5 mr-2" />
+              Wizyty na wybrany dzień
+            </div>
+            {selectedDate && availableSlots.length > 0 && (
+              <span className="text-sm font-normal text-green-600 bg-green-50 px-2 py-1 rounded-lg">
+                {availableSlots.length} {availableSlots.length === 1 ? 'wolny termin' : 
+                 availableSlots.length > 1 && availableSlots.length < 5 ? 'wolne terminy' : 'wolnych terminów'}
+              </span>
+            )}
           </h3>
 
           {selectedDate ? (
@@ -263,9 +277,14 @@ const AppointmentCalendar = () => {
               </div>
 
               <div className="flex justify-between items-center mb-4">
-                <span className="text-sm text-gray-600">
-                  Wizyt: {appointments.length}
-                </span>
+                <div>
+                  <span className="text-sm text-gray-600 mr-3">
+                    Wizyt: {appointments.length}
+                  </span>
+                  <span className="text-sm text-green-600">
+                    Wolne terminy: {availableSlots.length}
+                  </span>
+                </div>
                 <button
                   onClick={() => setShowAddForm(!showAddForm)}
                   className="flex items-center space-x-2 bg-primary text-white px-3 py-1 rounded-lg hover:bg-primary/90 transition-colors text-sm"
@@ -380,6 +399,29 @@ const AppointmentCalendar = () => {
                 </motion.div>
               )}
 
+              {/* Wolne terminy */}
+              {availableSlots.length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <h5 className="font-medium text-green-800 mb-2">Wolne terminy:</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {availableSlots.map(slot => (
+                      <button 
+                        key={slot} 
+                        className="inline-block px-3 py-1 bg-green-100 text-green-800 text-sm rounded-lg hover:bg-green-200 transition-colors"
+                        onClick={() => {
+                          setShowAddForm(true);
+                          setNewAppointment(prev => ({ ...prev, time: slot }));
+                        }}
+                        title="Kliknij, aby dodać wizytę o tej godzinie"
+                      >
+                        <Clock className="w-3 h-3 inline-block mr-1" />
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+              
               {loading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
