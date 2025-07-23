@@ -1262,6 +1262,11 @@ app.get('/api/admin/slots/:date', verifyToken, async (req, res) => {
 
     const { date } = req.params;
     
+    // Używamy modułu date-status do pobrania statusu daty
+    const getDateStatus = require('./date-status');
+    const dateStatus = await getDateStatus(db, dbType, date);
+    
+    // Pobieramy szczegółowe dane o slotach
     let allSlots, bookedAppointments;
     
     if (dbType === 'postgres') {
@@ -1294,14 +1299,23 @@ app.get('/api/admin/slots/:date', verifyToken, async (req, res) => {
       );
     }
     
+    // Obliczamy wolne terminy (te, które są w allSlots, ale nie ma ich w bookedAppointments)
+    const allTimes = allSlots.map(slot => slot.time);
     const bookedTimes = bookedAppointments.map(apt => apt.time);
-    const availableSlots = allSlots
-      .map(slot => slot.time)
-      .filter(time => !bookedTimes.includes(time));
+    const availableSlots = allTimes.filter(time => !bookedTimes.includes(time));
+    
+    console.log(`Admin pobiera sloty dla daty ${date}:`, {
+      status: dateStatus.status,
+      allTimes: allTimes.length,
+      availableSlots: availableSlots.length,
+      bookedAppointments: bookedAppointments.length
+    });
     
     res.json({ 
       available: availableSlots,
-      booked: bookedAppointments
+      booked: bookedAppointments,
+      status: dateStatus.status,
+      dateStatus: dateStatus
     });
   } catch (error) {
     console.error('Błąd pobierania slotów:', error);

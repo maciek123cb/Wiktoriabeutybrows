@@ -1,36 +1,48 @@
 // Moduł do sprawdzania statusu dat
 const getDateStatus = async (db, dbType, date) => {
   try {
-    // Sprawdź dostępne sloty (wolne terminy)
-    let availableSlots;
+    // Sprawdź wszystkie dostępne sloty (terminy w tabeli available_slots)
+    let allSlots;
     if (dbType === 'postgres') {
-      [availableSlots] = await db.execute(
+      [allSlots] = await db.execute(
         "SELECT time FROM available_slots WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1",
         [date]
       );
     } else {
-      [availableSlots] = await db.execute(
+      [allSlots] = await db.execute(
         'SELECT time FROM available_slots WHERE DATE_FORMAT(date, "%Y-%m-%d") = ?',
         [date]
       );
     }
     
     // Sprawdź zajęte wizyty
-    let bookedSlots;
+    let bookedAppointments;
     if (dbType === 'postgres') {
-      [bookedSlots] = await db.execute(
+      [bookedAppointments] = await db.execute(
         "SELECT time FROM appointments WHERE TO_CHAR(date, 'YYYY-MM-DD') = $1 AND status != 'cancelled'",
         [date]
       );
     } else {
-      [bookedSlots] = await db.execute(
+      [bookedAppointments] = await db.execute(
         'SELECT time FROM appointments WHERE DATE_FORMAT(date, "%Y-%m-%d") = ? AND status != "cancelled"',
         [date]
       );
     }
     
-    const availableCount = availableSlots?.length || 0;
-    const bookedCount = bookedSlots?.length || 0;
+    // Tworzymy tablice czasów
+    const allTimes = allSlots.map(slot => slot.time);
+    const bookedTimes = bookedAppointments.map(apt => apt.time);
+    
+    // Obliczamy wolne terminy (te, które są w allTimes, ale nie ma ich w bookedTimes)
+    const availableTimes = allTimes.filter(time => !bookedTimes.includes(time));
+    
+    // Liczba wolnych terminów i zajętych wizyt
+    const availableCount = availableTimes.length;
+    const bookedCount = bookedTimes.length;
+    
+    console.log(`Data ${date}: wszystkie terminy=${allTimes.length}, wolne=${availableCount}, zajęte=${bookedCount}`);
+    console.log(`Wolne terminy:`, availableTimes);
+    console.log(`Zajęte terminy:`, bookedTimes);
     
     // Określ status daty według nowych wymagań:
     // - Jeśli wolnych terminów > 0 i wizyt = 0 -> zielony
@@ -40,21 +52,30 @@ const getDateStatus = async (db, dbType, date) => {
     
     let status = 'none'; // brak terminów i wizyt - biały
     
-    if (availableCount > 0 && bookedCount === 0) {
-      status = 'available'; // wolne terminy, brak wizyt - zielony
+    if (allTimes.length === 0) {
+      // Brak terminów w ogóle
+      status = 'none';
+    } else if (availableCount > 0 && bookedCount === 0) {
+      // Są wolne terminy, brak wizyt
+      status = 'available';
     } else if (availableCount > 0 && bookedCount > 0) {
-      status = 'mixed'; // wolne terminy i wizyty - czerwono-zielony
+      // Są wolne terminy i wizyty
+      status = 'mixed';
     } else if (availableCount === 0 && bookedCount > 0) {
-      status = 'booked'; // brak wolnych terminów, są wizyty - czerwony
+      // Brak wolnych terminów, są wizyty (wszystkie terminy zajęte)
+      status = 'booked';
     }
     
-    console.log(`Status daty ${date}: ${status} (wolne: ${availableCount}, zajęte: ${bookedCount})`);
+    console.log(`Status daty ${date}: ${status} (wszystkie: ${allTimes.length}, wolne: ${availableCount}, zajęte: ${bookedCount})`);
     
     return {
       status,
       availableCount,
       bookedCount,
-      totalCount: availableCount + bookedCount
+      totalCount: allTimes.length,
+      allTimes,
+      availableTimes,
+      bookedTimes
     };
   } catch (error) {
     console.error(`Błąd sprawdzania statusu daty ${date}:`, error);

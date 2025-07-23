@@ -139,35 +139,19 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
     // Sprawdzamy, czy data jest w tablicy dostępnych dat
     const isAvailable = Array.isArray(availableDates) && availableDates.length > 0 && availableDates.includes(dateStr);
     
-    // Dla admina, sprawdzamy czy data ma sloty
-    if (isAdmin) {
-      const hasSlot = hasSlots(date);
-      
-      // Jeśli data ma sloty, ale nie ma statusu, ustawiamy status na 'available'
-      if (hasSlot) {
-        if (!status) {
-          return { 
-            available: true, 
-            status: 'available',
-            availableCount: 1,
-            bookedCount: 0,
-            totalCount: 1
-          };
-        }
-        
-        // Jeśli mamy status, zwracamy go
-        return { 
-          available: true, 
-          status: status.status || 'available',
-          availableCount: status.availableCount || 0,
-          bookedCount: status.bookedCount || 0,
-          totalCount: status.totalCount || 0
-        };
-      }
-    }
-    
     // Jeśli nie mamy statusu, zwracamy domyślny
     if (!status) {
+      // Dla admina, sprawdzamy czy data ma sloty
+      if (isAdmin && hasSlots(date)) {
+        return { 
+          available: true, 
+          status: 'available',
+          availableCount: 1,
+          bookedCount: 0,
+          totalCount: 1
+        };
+      }
+      
       return { 
         available: isAvailable, 
         status: 'none',
@@ -177,13 +161,16 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
       };
     }
     
-    // Zwracamy status
+    // Zwracamy status z serwera
     return { 
       available: isAvailable, 
       status: status.status || 'none',
       availableCount: status.availableCount || 0,
       bookedCount: status.bookedCount || 0,
-      totalCount: status.totalCount || 0
+      totalCount: status.totalCount || 0,
+      allTimes: status.allTimes || [],
+      availableTimes: status.availableTimes || [],
+      bookedTimes: status.bookedTimes || []
     };
   }
   
@@ -389,6 +376,11 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           
           // Dla admina, kolorujemy daty według statusu
           if (isAdmin) {
+            // Dodajemy szczegółowe logowanie dla debugowania
+            if (dateHasSlots) {
+              console.log(`Data ${dateStr} ma sloty, status:`, dateStatus.status);
+            }
+            
             // Kolorowanie według nowych wymagań
             if (dateStatus.status === 'available') {
               // Wolne terminy > 0, wizyty = 0 -> zielony
