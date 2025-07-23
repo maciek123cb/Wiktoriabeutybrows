@@ -428,7 +428,7 @@ app.post('/api/register', async (req, res) => {
     }
 
     const [existingUser] = await db.execute(
-      'SELECT id FROM users WHERE email = ?',
+      'SELECT id FROM users WHERE LOWER(email) = LOWER(?)',
       [email]
     );
 
@@ -470,12 +470,12 @@ app.post('/api/login', async (req, res) => {
       let users;
       if (dbType === 'postgres') {
         [users] = await db.execute(
-          'SELECT id, first_name, last_name, email, password_hash, is_active, role FROM users WHERE email = $1',
+          'SELECT id, first_name, last_name, email, password_hash, is_active, role FROM users WHERE LOWER(email) = LOWER($1)',
           [email]
         );
       } else {
         [users] = await db.execute(
-          'SELECT id, first_name, last_name, email, password_hash, is_active, role FROM users WHERE email = ?',
+          'SELECT id, first_name, last_name, email, password_hash, is_active, role FROM users WHERE LOWER(email) = LOWER(?)',
           [email]
         );
       }
