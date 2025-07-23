@@ -23,13 +23,20 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://wiktoriabeutybrows-frontend.onrender.com', 'https://wiktoriabeutybrows.onrender.com', /\.onrender\.com$/] 
-    : 'http://localhost:3000',
+  origin: '*', // Pozwalamy na żądania z dowolnej domeny
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Dodatkowe nagłówki CORS dla wszystkich odpowiedzi
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  next();
+});
+
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Dodajemy obsługę statycznych plików z folderu images
@@ -51,11 +58,11 @@ app.get('./', (req, res) => {
   res.json({ status: 'API działa poprawnie' });
 });
 
-// Dodatkowy endpoint dla sprawdzenia CORS
-app.options('/api/login', (req, res) => {
+// Dodatkowy endpoint dla sprawdzenia CORS - obsługujemy wszystkie ścieżki
+app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.status(200).send();
 });
 
