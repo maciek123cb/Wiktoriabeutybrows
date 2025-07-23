@@ -13,6 +13,10 @@ const UserManagement = () => {
   const [phoneCount, setPhoneCount] = useState(0)
   const [loadingPhones, setLoadingPhones] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [activationData, setActivationData] = useState(null)
+  const [showActivationModal, setShowActivationModal] = useState(false)
+  const [copiedLogin, setCopiedLogin] = useState(false)
+  const [copiedPassword, setCopiedPassword] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -85,6 +89,72 @@ const UserManagement = () => {
       }
     } catch (error) {
       console.error('Błąd usuwania użytkownika:', error)
+    }
+  }
+  
+  // Funkcja do aktywacji konta użytkownika
+  const activateUserAccount = async (userId) => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/activate-account`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          // Zapisz dane aktywacji i pokaż modal
+          setActivationData({
+            login: data.login,
+            password: data.password,
+            user: data.user
+          })
+          setShowActivationModal(true)
+          setCopiedLogin(false)
+          setCopiedPassword(false)
+          fetchUsers() // Odśwież listę użytkowników
+        } else {
+          alert(`Błąd: ${data.message || 'Nie udało się aktywować konta'}`)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Nieznany błąd' }))
+        alert(`Błąd: ${errorData.message || 'Nie udało się aktywować konta'}`)
+      }
+    } catch (error) {
+      console.error('Błąd aktywacji konta:', error)
+      alert('Błąd połączenia z serwerem')
+    }
+  }
+  
+  // Funkcja do kopiowania tekstu do schowka
+  const copyToClipboard = (text, setCopiedState) => {
+    try {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          setCopiedState(true)
+          setTimeout(() => setCopiedState(false), 2000)
+        })
+        .catch(err => {
+          console.error('Błąd kopiowania do schowka:', err)
+          // Alternatywna metoda
+          const textArea = document.createElement('textarea')
+          textArea.value = text
+          document.body.appendChild(textArea)
+          textArea.focus()
+          textArea.select()
+          document.execCommand('copy')
+          document.body.removeChild(textArea)
+          setCopiedState(true)
+          setTimeout(() => setCopiedState(false), 2000)
+        })
+    } catch (error) {
+      console.error('Błąd kopiowania:', error)
+      alert('Nie udało się skopiować tekstu')
     }
   }
   
@@ -248,6 +318,98 @@ const UserManagement = () => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
+      {/* Modal aktywacji konta */}
+      {showActivationModal && activationData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div 
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+              <UserCheck className="w-5 h-5 text-green-600 mr-2" />
+              Konto zostało aktywowane
+            </h3>
+            
+            <p className="text-gray-600 mb-4">
+              Konto dla użytkownika <span className="font-medium">{activationData.user?.first_name} {activationData.user?.last_name}</span> zostało pomyślnie aktywowane. Poniżej znajdują się dane logowania:
+            </p>
+            
+            <div className="space-y-4 mb-6">
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-500">Login:</span>
+                  <button 
+                    onClick={() => copyToClipboard(activationData.login, setCopiedLogin)}
+                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                  >
+                    {copiedLogin ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Skopiowano
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 mr-1" />
+                        Kopiuj
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="font-medium text-gray-800">{activationData.login}</div>
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-500">Hasło:</span>
+                  <button 
+                    onClick={() => copyToClipboard(activationData.password, setCopiedPassword)}
+                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                  >
+                    {copiedPassword ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Skopiowano
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 mr-1" />
+                        Kopiuj
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="font-medium text-gray-800">{activationData.password}</div>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    Zapisz te dane! Hasło nie będzie już dostępne po zamknięciu tego okna.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowActivationModal(false)}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              >
+                Zamknij
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center space-x-3">
           <Users className="w-6 h-6 text-primary" />
@@ -363,9 +525,13 @@ const UserManagement = () => {
                           {user.first_name} {user.last_name}
                         </span>
                         {user.account_type === 'manual' && (
-                          <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                          <button 
+                            onClick={() => activateUserAccount(user.id)}
+                            className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full hover:bg-orange-200 transition-colors cursor-pointer"
+                            title="Kliknij, aby aktywować konto"
+                          >
                             Brak konta
-                          </span>
+                          </button>
                         )}
                       </div>
                       <div className="text-sm text-gray-500">ID: {user.id}</div>
