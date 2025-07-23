@@ -1209,8 +1209,22 @@ app.get('/api/admin/users', verifyToken, async (req, res) => {
        FROM users ORDER BY created_at DESC`
     );
 
+    // Dodajemy dane logowania dla każdego użytkownika
+    const generateUserCredentials = require('./user-credentials');
+    const usersWithCredentials = users.map(user => {
+      // Dodajemy dane logowania tylko dla użytkowników z ręcznie utworzonym kontem
+      if (user.account_type === 'manual') {
+        const credentials = generateUserCredentials(user);
+        return {
+          ...user,
+          login: credentials.login,
+          generated_password: credentials.password
+        };
+      }
+      return user;
+    });
 
-    res.json({ users });
+    res.json({ users: usersWithCredentials });
   } catch (error) {
     console.error('Błąd pobierania użytkowników:', error);
     res.status(500).json({ message: 'Błąd serwera' });

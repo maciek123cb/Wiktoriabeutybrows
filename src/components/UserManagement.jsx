@@ -536,6 +536,35 @@ const UserManagement = () => {
                         )}
                       </div>
                       <div className="text-sm text-gray-500">ID: {user.id}</div>
+                      
+                      {/* Dane logowania */}
+                      {user.login && user.generated_password && (
+                        <div className="mt-2 p-2 bg-gray-50 rounded-md border border-gray-200 text-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-500">Login:</span>
+                            <button 
+                              onClick={() => copyToClipboard(user.login, () => {})}
+                              className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
+                              title="Kopiuj login"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="font-medium text-gray-800 mb-1">{user.login}</div>
+                          
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-500">Hasło:</span>
+                            <button 
+                              onClick={() => copyToClipboard(user.generated_password, () => {})}
+                              className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
+                              title="Kopiuj hasło"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="font-medium text-gray-800">{user.generated_password}</div>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="py-4 px-4">
