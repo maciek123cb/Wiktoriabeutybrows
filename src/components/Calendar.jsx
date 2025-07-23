@@ -389,21 +389,18 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           
           // Dla admina, kolorujemy daty według statusu
           if (isAdmin) {
-            // Sprawdzamy, czy data ma sloty
-            if (dateHasSlots) {
-              // Sprawdzamy status daty
-              if (dateStatus.status === 'available') {
-                buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 ";
-              } else if (dateStatus.status === 'mixed') {
-                buttonClass += "bg-gradient-to-r from-green-100 to-red-100 text-gray-800 hover:from-green-200 hover:to-red-200 ";
-              } else if (dateStatus.status === 'booked') {
-                buttonClass += "bg-red-100 text-red-800 hover:bg-red-200 ";
-              } else {
-                // Jeśli data ma sloty, ale nie ma statusu, kolorujemy na zielono
-                buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 ";
-              }
+            // Kolorowanie według nowych wymagań
+            if (dateStatus.status === 'available') {
+              // Wolne terminy > 0, wizyty = 0 -> zielony
+              buttonClass += "bg-green-100 text-green-800 hover:bg-green-200 ";
+            } else if (dateStatus.status === 'mixed') {
+              // Wolne terminy > 0, wizyty > 0 -> czerwono-zielony
+              buttonClass += "bg-gradient-to-r from-green-100 to-red-100 text-gray-800 hover:from-green-200 hover:to-red-200 ";
+            } else if (dateStatus.status === 'booked') {
+              // Wolne terminy = 0, wizyty > 0 -> czerwony
+              buttonClass += "bg-red-100 text-red-800 hover:bg-red-200 ";
             } else {
-              // Jeśli data nie ma slotów, zostawiamy białe tło
+              // Wolne terminy = 0, wizyty = 0 -> biały (brak koloru)
               buttonClass += "bg-white text-gray-700 hover:bg-gray-50 ";
             }
           } 
@@ -442,19 +439,19 @@ const Calendar = ({ onDateSelect, isAdmin = false, datesWithSlots = [], availabl
           <>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-100 rounded"></div>
-              <span className="text-gray-600">Wszystkie terminy dostępne</span>
+              <span className="text-gray-600">Wolne terminy (bez wizyt)</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-gradient-to-r from-green-100 to-red-100 rounded"></div>
-              <span className="text-gray-600">Część terminów zajęta</span>
+              <span className="text-gray-600">Wolne terminy i wizyty</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-red-100 rounded"></div>
-              <span className="text-gray-600">Wszystkie terminy zajęte</span>
+              <span className="text-gray-600">Tylko wizyty (brak wolnych terminów)</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-white border border-gray-200 rounded"></div>
-              <span className="text-gray-600">Brak terminów</span>
+              <span className="text-gray-600">Brak terminów i wizyt</span>
             </div>
           </>
         ) : (
