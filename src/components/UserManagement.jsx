@@ -45,7 +45,6 @@ const generatePassword = (firstName, lastName) => {
   // Łączymy imię i nazwisko + "123"
   return `${normalizedFirstName}${normalizedLastName}123`;
 };
-}
 
 const UserManagement = () => {
   const [users, setUsers] = useState([])
