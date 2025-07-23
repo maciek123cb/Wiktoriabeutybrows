@@ -49,9 +49,18 @@ const generateLogin = (firstName, lastName) => {
  * @returns {string} - Hasło użytkownika
  */
 const generatePassword = (firstName, lastName) => {
-  // Usuwamy polskie znaki, spacje i zamieniamy na małe litery
-  const normalizedFirstName = removePolishChars(firstName).toLowerCase().replace(/\s+/g, '');
-  const normalizedLastName = removePolishChars(lastName).toLowerCase().replace(/\s+/g, '');
+  // Usuwamy polskie znaki i spacje, ale zachowujemy wielkość pierwszej litery
+  let normalizedFirstName = removePolishChars(firstName).replace(/\s+/g, '');
+  let normalizedLastName = removePolishChars(lastName).replace(/\s+/g, '');
+  
+  // Zamieniamy wszystkie litery na małe, z wyjątkiem pierwszej
+  if (normalizedFirstName.length > 0) {
+    normalizedFirstName = normalizedFirstName[0] + normalizedFirstName.slice(1).toLowerCase();
+  }
+  
+  if (normalizedLastName.length > 0) {
+    normalizedLastName = normalizedLastName.toLowerCase();
+  }
   
   // Łączymy imię i nazwisko + "123"
   return `${normalizedFirstName}${normalizedLastName}123`;

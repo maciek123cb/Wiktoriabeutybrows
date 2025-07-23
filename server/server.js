@@ -1286,8 +1286,9 @@ app.post('/api/admin/users/:userId/activate-account', verifyToken, async (req, r
     }
     
     // Generujemy hasło (login to email)
-    const accountUtils = require('./account-utils');
-    const password = accountUtils.generatePassword(user.first_name, user.last_name);
+    const userCredentials = require('./user-credentials');
+    const credentials = userCredentials(user);
+    const password = credentials.password;
     
     // Hashujemy hasło
     const hashedPassword = await bcrypt.hash(password, 10);

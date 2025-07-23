@@ -11,10 +11,8 @@ const generateUserCredentials = (user) => {
   const login = user.email;
   
   // Generujemy hasło na podstawie imienia i nazwiska
-  // Usuwamy polskie znaki i zamieniamy na małe litery
-  const firstName = removePolishChars(user.first_name).toLowerCase();
-  const lastName = removePolishChars(user.last_name).toLowerCase();
-  const password = `${firstName}${lastName}123`;
+  // Używamy funkcji generatePassword z account-utils.js
+  const password = generatePassword(user.first_name, user.last_name);
   
   console.log(`Wygenerowano hasło dla ${user.first_name} ${user.last_name}:`, password);
   

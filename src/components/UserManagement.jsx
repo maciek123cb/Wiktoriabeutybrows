@@ -25,6 +25,26 @@ const removePolishChars = (text) => {
     .replace(/Ź/g, 'z')
     .replace(/Ż/g, 'z')
     .replace(/\s+/g, '');
+};
+
+// Funkcja do generowania hasła
+const generatePassword = (firstName, lastName) => {
+  // Usuwamy polskie znaki i spacje, ale zachowujemy wielkość pierwszej litery
+  let normalizedFirstName = removePolishChars(firstName).replace(/\s+/g, '');
+  let normalizedLastName = removePolishChars(lastName).replace(/\s+/g, '');
+  
+  // Zamieniamy wszystkie litery na małe, z wyjątkiem pierwszej
+  if (normalizedFirstName.length > 0) {
+    normalizedFirstName = normalizedFirstName[0] + normalizedFirstName.slice(1).toLowerCase();
+  }
+  
+  if (normalizedLastName.length > 0) {
+    normalizedLastName = normalizedLastName.toLowerCase();
+  }
+  
+  // Łączymy imię i nazwisko + "123"
+  return `${normalizedFirstName}${normalizedLastName}123`;
+};
 }
 
 const UserManagement = () => {
@@ -579,7 +599,7 @@ const UserManagement = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-gray-500">Hasło:</span>
                           <button 
-                            onClick={() => copyToClipboard(user.generated_password || `${removePolishChars(user.first_name).toLowerCase()}${removePolishChars(user.last_name).toLowerCase()}123`, () => {})}
+                            onClick={() => copyToClipboard(user.generated_password || generatePassword(user.first_name, user.last_name), () => {})}
                             className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
                             title="Kopiuj hasło"
                           >
@@ -587,7 +607,7 @@ const UserManagement = () => {
                           </button>
                         </div>
                         <div className="font-medium text-gray-800">
-                          {user.generated_password || `${removePolishChars(user.first_name).toLowerCase()}${removePolishChars(user.last_name).toLowerCase()}123`}
+                          {user.generated_password || generatePassword(user.first_name, user.last_name)}
                         </div>
                       </div>
                     </div>
