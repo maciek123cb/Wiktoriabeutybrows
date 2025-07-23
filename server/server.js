@@ -1212,17 +1212,31 @@ app.get('/api/admin/users', verifyToken, async (req, res) => {
     // Dodajemy dane logowania dla każdego użytkownika
     const generateUserCredentials = require('./user-credentials');
     const usersWithCredentials = users.map(user => {
-      // Dodajemy dane logowania tylko dla użytkowników z ręcznie utworzonym kontem
-      if (user.account_type === 'manual') {
+      try {
+        // Dodajemy dane logowania dla wszystkich użytkowników
         const credentials = generateUserCredentials(user);
+        console.log(`Generuję dane logowania dla użytkownika ${user.id}:`, {
+          login: credentials.login,
+          password: credentials.password
+        });
         return {
           ...user,
           login: credentials.login,
           generated_password: credentials.password
         };
+      } catch (error) {
+        console.error(`Błąd generowania danych logowania dla użytkownika ${user.id}:`, error);
+        return user;
       }
-      return user;
     });
+    
+    console.log('Użytkownicy z danymi logowania:', usersWithCredentials.map(u => ({ 
+      id: u.id, 
+      first_name: u.first_name, 
+      last_name: u.last_name, 
+      login: u.login, 
+      generated_password: u.generated_password 
+    })));
 
     res.json({ users: usersWithCredentials });
   } catch (error) {

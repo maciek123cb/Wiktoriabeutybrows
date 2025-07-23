@@ -3,6 +3,30 @@ import { motion } from 'framer-motion'
 import { Users, Check, X, Trash2, Search, UserCheck, UserX, Phone, Copy, CheckCircle } from 'lucide-react'
 import { API_URL } from '../config'
 
+// Funkcja do usuwania polskich znaków
+const removePolishChars = (text) => {
+  return text
+    .replace(/ą/g, 'a')
+    .replace(/ć/g, 'c')
+    .replace(/ę/g, 'e')
+    .replace(/ł/g, 'l')
+    .replace(/ń/g, 'n')
+    .replace(/ó/g, 'o')
+    .replace(/ś/g, 's')
+    .replace(/ź/g, 'z')
+    .replace(/ż/g, 'z')
+    .replace(/Ą/g, 'a')
+    .replace(/Ć/g, 'c')
+    .replace(/Ę/g, 'e')
+    .replace(/Ł/g, 'l')
+    .replace(/Ń/g, 'n')
+    .replace(/Ó/g, 'o')
+    .replace(/Ś/g, 's')
+    .replace(/Ź/g, 'z')
+    .replace(/Ż/g, 'z')
+    .replace(/\s+/g, '');
+}
+
 const UserManagement = () => {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +65,7 @@ const UserManagement = () => {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('Otrzymane dane użytkowników:', data.users)
         setUsers(data.users)
       }
     } catch (error) {
@@ -538,33 +563,33 @@ const UserManagement = () => {
                       <div className="text-sm text-gray-500">ID: {user.id}</div>
                       
                       {/* Dane logowania */}
-                      {user.login && user.generated_password && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded-md border border-gray-200 text-xs">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-500">Login:</span>
-                            <button 
-                              onClick={() => copyToClipboard(user.login, () => {})}
-                              className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
-                              title="Kopiuj login"
-                            >
-                              <Copy className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <div className="font-medium text-gray-800 mb-1">{user.login}</div>
-                          
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-500">Hasło:</span>
-                            <button 
-                              onClick={() => copyToClipboard(user.generated_password, () => {})}
-                              className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
-                              title="Kopiuj hasło"
-                            >
-                              <Copy className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <div className="font-medium text-gray-800">{user.generated_password}</div>
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md border border-gray-200 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">Login:</span>
+                          <button 
+                            onClick={() => copyToClipboard(user.email, () => {})}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
+                            title="Kopiuj login"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
                         </div>
-                      )}
+                        <div className="font-medium text-gray-800 mb-1">{user.email}</div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">Hasło:</span>
+                          <button 
+                            onClick={() => copyToClipboard(user.generated_password || `${removePolishChars(user.first_name).toLowerCase()}${removePolishChars(user.last_name).toLowerCase()}123`, () => {})}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
+                            title="Kopiuj hasło"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="font-medium text-gray-800">
+                          {user.generated_password || `${removePolishChars(user.first_name).toLowerCase()}${removePolishChars(user.last_name).toLowerCase()}123`}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className="py-4 px-4">

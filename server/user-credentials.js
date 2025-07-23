@@ -1,5 +1,5 @@
 // Moduł do generowania danych logowania dla użytkowników
-const { generatePassword } = require('./account-utils');
+const { generatePassword, removePolishChars } = require('./account-utils');
 
 /**
  * Generuje dane logowania dla użytkownika
@@ -11,7 +11,12 @@ const generateUserCredentials = (user) => {
   const login = user.email;
   
   // Generujemy hasło na podstawie imienia i nazwiska
-  const password = generatePassword(user.first_name, user.last_name);
+  // Usuwamy polskie znaki i zamieniamy na małe litery
+  const firstName = removePolishChars(user.first_name).toLowerCase();
+  const lastName = removePolishChars(user.last_name).toLowerCase();
+  const password = `${firstName}${lastName}123`;
+  
+  console.log(`Wygenerowano hasło dla ${user.first_name} ${user.last_name}:`, password);
   
   return {
     login,
