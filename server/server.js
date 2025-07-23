@@ -686,6 +686,110 @@ app.get('/api/user/appointments', verifyToken, async (req, res) => {
   }
 });
 
+// EKSPORT WIZYTY DO KALENDARZA
+app.get('/api/user/appointments/:id/calendar', async (req, res) => {
+  // Pobieramy token z parametru URL lub nagłówka
+  const token = req.query.token || req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Brak tokenu autoryzacji'
+    });
+  }
+  
+  let userId;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    userId = decoded.id;
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Nieprawidłowy token'
+    });
+  }
+  try {
+    const userId = req.user.id;
+    const appointmentId = req.params.id;
+    
+    // Pobierz dane wizyty
+    let appointment;
+    if (dbType === 'postgres') {
+      [appointment] = await db.execute(
+        `SELECT a.id, a.date, a.time, a.notes, a.status, a.total_price, a.total_duration,
+                (SELECT COALESCE(SUM(duration), 0) FROM appointment_services WHERE appointment_id = a.id) as total_duration
+         FROM appointments a
+         WHERE a.id = $1 AND a.user_id = $2`,
+        [appointmentId, userId]
+      );
+    } else {
+      [appointment] = await db.execute(
+        `SELECT a.id, a.date, a.time, a.notes, a.status, a.total_price, a.total_duration,
+                (SELECT IFNULL(SUM(duration), 0) FROM appointment_services WHERE appointment_id = a.id) as total_duration
+         FROM appointments a
+         WHERE a.id = ? AND a.user_id = ?`,
+        [appointmentId, userId]
+      );
+    }
+    
+    if (!appointment || appointment.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Wizyta nie znaleziona'
+      });
+    }
+    
+    // Pobierz usługi dla wizyty
+    try {
+      const fixAppointmentServices = require('./fix-appointment-services');
+      await fixAppointmentServices(appointment[0], dbType, db);
+    } catch (servicesError) {
+      console.error(`Błąd pobierania usług dla wizyty ID ${appointmentId}:`, servicesError);
+      appointment[0].services = [];
+    }
+    
+    // Pobierz dane użytkownika
+    let user;
+    if (dbType === 'postgres') {
+      [user] = await db.execute(
+        'SELECT id, first_name, last_name, email, phone FROM users WHERE id = $1',
+        [userId]
+      );
+    } else {
+      [user] = await db.execute(
+        'SELECT id, first_name, last_name, email, phone FROM users WHERE id = ?',
+        [userId]
+      );
+    }
+    
+    if (!user || user.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Użytkownik nie znaleziony'
+      });
+    }
+    
+    // Generuj plik kalendarza
+    const { generateCalendarEvent } = require('./calendar-export');
+    const calendarContent = generateCalendarEvent(appointment[0], user[0], {
+      location: 'Wiktoria Beauty Brows, ul. Przykładowa 123, 00-000 Warszawa',
+      url: 'https://wiktoriabeutybrows.pl'
+    });
+    
+    // Ustaw nagłówki odpowiedzi
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="wizyta-${appointmentId}.ics"`);
+    res.send(calendarContent);
+    
+  } catch (error) {
+    console.error('Błąd eksportu wizyty do kalendarza:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Błąd serwera podczas eksportu wizyty do kalendarza'
+    });
+  }
+});
+
 // ZMIANA HASŁA UŻYTKOWNIKA
 app.post('/api/user/change-password', verifyToken, async (req, res) => {
   const changePassword = require('./change-password');
@@ -1417,7 +1521,7 @@ app.get('/api/admin/slots/:date', verifyToken, async (req, res) => {
       );
       
       [bookedAppointments] = await db.execute(
-        `SELECT a.time, u.first_name, u.last_name 
+        `SELECT a.id, a.time, u.first_name, u.last_name 
          FROM appointments a 
          JOIN users u ON a.user_id = u.id 
          WHERE TO_CHAR(a.date, 'YYYY-MM-DD') = $1 AND a.status != 'cancelled' 
@@ -1431,7 +1535,7 @@ app.get('/api/admin/slots/:date', verifyToken, async (req, res) => {
       );
       
       [bookedAppointments] = await db.execute(
-        `SELECT a.time, u.first_name, u.last_name 
+        `SELECT a.id, a.time, u.first_name, u.last_name 
          FROM appointments a 
          JOIN users u ON a.user_id = u.id 
          WHERE DATE_FORMAT(a.date, "%Y-%m-%d") = ? AND a.status != 'cancelled' 
@@ -1461,6 +1565,150 @@ app.get('/api/admin/slots/:date', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Błąd pobierania slotów:', error);
     res.status(500).json({ message: 'Błąd serwera' });
+  }
+});
+
+// EKSPORT WSZYSTKICH WIZYT Z DANEGO DNIA DO KALENDARZA
+app.get('/api/admin/calendar/day/:date', async (req, res) => {
+  // Pobieramy token z parametru URL lub nagłówka
+  const token = req.query.token || req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Brak tokenu autoryzacji'
+    });
+  }
+  
+  let userRole;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    userRole = decoded.role;
+    
+    if (userRole !== 'admin') {
+      return res.status(403).json({ message: 'Brak uprawnień' });
+    }
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Nieprawidłowy token'
+    });
+  }
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Brak uprawnień' });
+    }
+    
+    const { date } = req.params;
+    
+    // Pobierz wszystkie wizyty z danego dnia
+    let appointments;
+    if (dbType === 'postgres') {
+      [appointments] = await db.execute(
+        `SELECT a.id, a.date, a.time, a.notes, a.status, a.total_price, a.total_duration,
+                u.id as user_id, u.first_name, u.last_name, u.email, u.phone,
+                (SELECT COALESCE(SUM(duration), 0) FROM appointment_services WHERE appointment_id = a.id) as total_duration
+         FROM appointments a
+         JOIN users u ON a.user_id = u.id
+         WHERE TO_CHAR(a.date, 'YYYY-MM-DD') = $1 AND a.status != 'cancelled'
+         ORDER BY a.time`,
+        [date]
+      );
+    } else {
+      [appointments] = await db.execute(
+        `SELECT a.id, a.date, a.time, a.notes, a.status, a.total_price, a.total_duration,
+                u.id as user_id, u.first_name, u.last_name, u.email, u.phone,
+                (SELECT IFNULL(SUM(duration), 0) FROM appointment_services WHERE appointment_id = a.id) as total_duration
+         FROM appointments a
+         JOIN users u ON a.user_id = u.id
+         WHERE DATE_FORMAT(a.date, "%Y-%m-%d") = ? AND a.status != 'cancelled'
+         ORDER BY a.time`,
+        [date]
+      );
+    }
+    
+    if (!appointments || appointments.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Brak wizyt w tym dniu'
+      });
+    }
+    
+    // Pobierz usługi dla każdej wizyty
+    for (const appointment of appointments) {
+      try {
+        const fixAppointmentServices = require('./fix-appointment-services');
+        await fixAppointmentServices(appointment, dbType, db);
+      } catch (servicesError) {
+        console.error(`Błąd pobierania usług dla wizyty ID ${appointment.id}:`, servicesError);
+        appointment.services = [];
+      }
+    }
+    
+    // Generuj kalendarz z wszystkimi wizytami
+    const ical = require('ical-generator');
+    const calendar = ical({ name: `Wiktoria Beauty Brows - Wizyty ${date}` });
+    
+    // Dodaj każdą wizytę do kalendarza
+    for (const appointment of appointments) {
+      // Parsowanie daty i czasu
+      const [hours, minutes] = appointment.time.split(':').map(Number);
+      const startDate = new Date(appointment.date);
+      startDate.setHours(hours, minutes, 0, 0);
+      
+      // Obliczanie daty końcowej na podstawie czasu trwania
+      const endDate = new Date(startDate);
+      const durationMinutes = appointment.total_duration || 60; // Domyślnie 60 minut, jeśli nie podano
+      endDate.setMinutes(endDate.getMinutes() + durationMinutes);
+      
+      // Tworzenie tytułu i opisu
+      const title = `Wizyta: ${appointment.first_name} ${appointment.last_name}`;
+      
+      // Przygotowanie opisu z listą usług
+      let description = `Wizyta klienta: ${appointment.first_name} ${appointment.last_name}\n`;
+      description += `Telefon: ${appointment.phone || 'brak'}\n`;
+      description += `Email: ${appointment.email || 'brak'}\n\n`;
+      
+      if (appointment.services && appointment.services.length > 0) {
+        description += 'Usługi:\n';
+        appointment.services.forEach(service => {
+          description += `- ${service.service_name}\n`;
+        });
+      }
+      
+      if (appointment.notes) {
+        description += `\nUwagi: ${appointment.notes}\n`;
+      }
+      
+      description += `\nStatus: ${appointment.status === 'confirmed' ? 'Potwierdzona' : 'Oczekuje na potwierdzenie'}`;
+      
+      // Dodawanie wydarzenia do kalendarza
+      calendar.createEvent({
+        start: startDate,
+        end: endDate,
+        summary: title,
+        description: description,
+        location: 'Wiktoria Beauty Brows, ul. Przykładowa 123, 00-000 Warszawa',
+        url: 'https://wiktoriabeutybrows.pl',
+        organizer: {
+          name: 'Wiktoria Beauty Brows',
+          email: 'kontakt@wiktoriabeutybrows.pl'
+        },
+        status: appointment.status === 'confirmed' ? 'confirmed' : 'tentative'
+      });
+    }
+    
+    // Ustaw nagłówki odpowiedzi
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="wizyty-${date}.ics"`);
+    res.send(calendar.toString());
+    
+  } catch (error) {
+    console.error('Błąd eksportu wizyt do kalendarza:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Błąd serwera podczas eksportu wizyt do kalendarza'
+    });
   }
 });
 
@@ -1626,6 +1874,106 @@ app.get('/api/admin/appointments', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Błąd pobierania wizyt:', error);
     res.status(500).json({ message: 'Błąd serwera' });
+  }
+});
+
+// EKSPORT WIZYTY DO KALENDARZA DLA ADMINA
+app.get('/api/admin/appointments/:id/calendar', async (req, res) => {
+  // Pobieramy token z parametru URL lub nagłówka
+  const token = req.query.token || req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Brak tokenu autoryzacji'
+    });
+  }
+  
+  let userRole;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    userRole = decoded.role;
+    
+    if (userRole !== 'admin') {
+      return res.status(403).json({ message: 'Brak uprawnień' });
+    }
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Nieprawidłowy token'
+    });
+  }
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Brak uprawnień' });
+    }
+    
+    const appointmentId = req.params.id;
+    
+    // Pobierz dane wizyty wraz z danymi użytkownika
+    let appointment;
+    if (dbType === 'postgres') {
+      [appointment] = await db.execute(
+        `SELECT a.id, a.date, a.time, a.notes, a.status, a.total_price, a.total_duration,
+                u.id as user_id, u.first_name, u.last_name, u.email, u.phone,
+                (SELECT COALESCE(SUM(duration), 0) FROM appointment_services WHERE appointment_id = a.id) as total_duration
+         FROM appointments a
+         JOIN users u ON a.user_id = u.id
+         WHERE a.id = $1`,
+        [appointmentId]
+      );
+    } else {
+      [appointment] = await db.execute(
+        `SELECT a.id, a.date, a.time, a.notes, a.status, a.total_price, a.total_duration,
+                u.id as user_id, u.first_name, u.last_name, u.email, u.phone,
+                (SELECT IFNULL(SUM(duration), 0) FROM appointment_services WHERE appointment_id = a.id) as total_duration
+         FROM appointments a
+         JOIN users u ON a.user_id = u.id
+         WHERE a.id = ?`,
+        [appointmentId]
+      );
+    }
+    
+    if (!appointment || appointment.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Wizyta nie znaleziona'
+      });
+    }
+    
+    // Pobierz usługi dla wizyty
+    try {
+      const fixAppointmentServices = require('./fix-appointment-services');
+      await fixAppointmentServices(appointment[0], dbType, db);
+    } catch (servicesError) {
+      console.error(`Błąd pobierania usług dla wizyty ID ${appointmentId}:`, servicesError);
+      appointment[0].services = [];
+    }
+    
+    // Generuj plik kalendarza
+    const { generateCalendarEvent } = require('./calendar-export');
+    const calendarContent = generateCalendarEvent(appointment[0], {
+      id: appointment[0].user_id,
+      first_name: appointment[0].first_name,
+      last_name: appointment[0].last_name,
+      email: appointment[0].email,
+      phone: appointment[0].phone
+    }, {
+      location: 'Wiktoria Beauty Brows, ul. Przykładowa 123, 00-000 Warszawa',
+      url: 'https://wiktoriabeutybrows.pl'
+    });
+    
+    // Ustaw nagłówki odpowiedzi
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="wizyta-${appointmentId}.ics"`);
+    res.send(calendarContent);
+    
+  } catch (error) {
+    console.error('Błąd eksportu wizyty do kalendarza:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Błąd serwera podczas eksportu wizyty do kalendarza'
+    });
   }
 });
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "framer-motion": "^10.16.4",
+    "ical-generator": "^9.0.0",
     "lucide-react": "^0.294.0",
     "quill": "^2.0.3",
     "react": "^18.2.0",
