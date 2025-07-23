@@ -650,6 +650,12 @@ app.get('/api/user/appointments', verifyToken, async (req, res) => {
   }
 });
 
+// ZMIANA HASŁA UŻYTKOWNIKA
+app.post('/api/user/change-password', verifyToken, async (req, res) => {
+  const changePassword = require('./change-password');
+  await changePassword(req, res, db, dbType, bcrypt);
+});
+
 // UMAWIANIE WIZYTY
 app.post('/api/book-appointment', verifyToken, async (req, res) => {
   try {
