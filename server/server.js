@@ -211,6 +211,35 @@ async function initializeDatabase() {
         console.error('Błąd sprawdzania/dodawania kolumny duration w tabeli services:', alterError);
       }
       
+      // Dodajemy kolumnę generated_password do tabeli users, jeśli nie istnieje
+      try {
+        if (dbType === 'postgres') {
+          const [columnCheck] = await db.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'generated_password'"
+          );
+          
+          if (columnCheck.length === 0) {
+            await db.execute(
+              "ALTER TABLE users ADD COLUMN generated_password VARCHAR(255)"
+            );
+            console.log('Dodano kolumnę generated_password do tabeli users');
+          }
+        } else {
+          const [columnCheck] = await db.execute(
+            "SELECT COUNT(*) as count FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'generated_password'"
+          );
+          
+          if (columnCheck[0].count === 0) {
+            await db.execute(
+              "ALTER TABLE users ADD COLUMN generated_password VARCHAR(255)"
+            );
+            console.log('Dodano kolumnę generated_password do tabeli users');
+          }
+        }
+      } catch (alterError) {
+        console.error('Błąd sprawdzania/dodawania kolumny generated_password w tabeli users:', alterError);
+      }
+      
       // Dodajemy kolumnę total_price do tabeli appointments, jeśli nie istnieje
       try {
         if (dbType === 'postgres') {
@@ -1211,7 +1240,7 @@ app.get('/api/admin/users', verifyToken, async (req, res) => {
     }
 
     const [users] = await db.execute(
-      `SELECT id, first_name, last_name, phone, email, is_active, role, created_at,
+      `SELECT id, first_name, last_name, phone, email, is_active, role, created_at, generated_password,
        CASE WHEN password_hash = 'manual_account' THEN 'manual' ELSE 'registered' END as account_type
        FROM users ORDER BY created_at DESC`
     );
@@ -1293,16 +1322,16 @@ app.post('/api/admin/users/:userId/activate-account', verifyToken, async (req, r
     // Hashujemy hasło
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Aktualizujemy konto użytkownika - tylko hasło, bez kolumny username
+    // Aktualizujemy konto użytkownika - hasło i generated_password
     if (dbType === 'postgres') {
       await db.execute(
-        'UPDATE users SET password_hash = $1 WHERE id = $2',
-        [hashedPassword, userId]
+        'UPDATE users SET password_hash = $1, generated_password = $2 WHERE id = $3',
+        [hashedPassword, password, userId]
       );
     } else {
       await db.execute(
-        'UPDATE users SET password_hash = ? WHERE id = ?',
-        [hashedPassword, userId]
+        'UPDATE users SET password_hash = ?, generated_password = ? WHERE id = ?',
+        [hashedPassword, password, userId]
       );
     }
     

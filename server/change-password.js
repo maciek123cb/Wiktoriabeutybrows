@@ -55,16 +55,35 @@ const changePassword = async (req, res, db, dbType, bcrypt) => {
     // Hashujemy nowe hasło
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     
-    // Aktualizujemy hasło w bazie danych
+    // Pobieramy pełne dane użytkownika, aby zaktualizować hasło w panelu admina
+    let fullUser;
+    if (dbType === 'postgres') {
+      [fullUser] = await db.execute(
+        'SELECT id, first_name, last_name, email FROM users WHERE id = $1',
+        [userId]
+      );
+    } else {
+      [fullUser] = await db.execute(
+        'SELECT id, first_name, last_name, email FROM users WHERE id = ?',
+        [userId]
+      );
+    }
+    
+    fullUser = fullUser[0];
+    
+    // Zapisujemy nowe hasło w zmiennej dla panelu admina
+    const plainPassword = newPassword;
+    
+    // Aktualizujemy hasło w bazie danych wraz z informacją o ręcznej zmianie hasła
     if (dbType === 'postgres') {
       await db.execute(
-        'UPDATE users SET password_hash = $1 WHERE id = $2',
-        [hashedPassword, userId]
+        'UPDATE users SET password_hash = $1, generated_password = $2 WHERE id = $3',
+        [hashedPassword, plainPassword, userId]
       );
     } else {
       await db.execute(
-        'UPDATE users SET password_hash = ? WHERE id = ?',
-        [hashedPassword, userId]
+        'UPDATE users SET password_hash = ?, generated_password = ? WHERE id = ?',
+        [hashedPassword, plainPassword, userId]
       );
     }
     
