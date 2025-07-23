@@ -63,6 +63,13 @@ const UserManagement = () => {
 
   useEffect(() => {
     fetchUsers()
+    
+    // Odświeżaj listę użytkowników co 30 sekund, aby pokazywać aktualne hasła
+    const intervalId = setInterval(() => {
+      fetchUsers()
+    }, 30000)
+    
+    return () => clearInterval(intervalId)
   }, [])
   
   // Resetuj stan skopiowania po 2 sekundach
@@ -464,6 +471,16 @@ const UserManagement = () => {
           <div className="text-sm text-gray-600 whitespace-nowrap">
             Łącznie: {filteredUsers.length} użytkowników
           </div>
+          <button
+            onClick={fetchUsers}
+            className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+            title="Odśwież listę użytkowników"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
+            </svg>
+            <span>Odśwież</span>
+          </button>
           <button
             onClick={() => {
               fetchPhoneNumbers()

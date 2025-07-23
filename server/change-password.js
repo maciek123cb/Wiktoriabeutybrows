@@ -74,17 +74,51 @@ const changePassword = async (req, res, db, dbType, bcrypt) => {
     // Zapisujemy nowe hasło w zmiennej dla panelu admina
     const plainPassword = newPassword;
     
+    console.log(`Aktualizacja hasła dla użytkownika ${userId}:`, {
+      email: fullUser.email,
+      first_name: fullUser.first_name,
+      last_name: fullUser.last_name,
+      newPassword: plainPassword
+    });
+    
     // Aktualizujemy hasło w bazie danych wraz z informacją o ręcznej zmianie hasła
-    if (dbType === 'postgres') {
-      await db.execute(
-        'UPDATE users SET password_hash = $1, generated_password = $2 WHERE id = $3',
-        [hashedPassword, plainPassword, userId]
-      );
-    } else {
-      await db.execute(
-        'UPDATE users SET password_hash = ?, generated_password = ? WHERE id = ?',
-        [hashedPassword, plainPassword, userId]
-      );
+    try {
+      if (dbType === 'postgres') {
+        await db.execute(
+          'UPDATE users SET password_hash = $1, generated_password = $2 WHERE id = $3',
+          [hashedPassword, plainPassword, userId]
+        );
+      } else {
+        await db.execute(
+          'UPDATE users SET password_hash = ?, generated_password = ? WHERE id = ?',
+          [hashedPassword, plainPassword, userId]
+        );
+      }
+      console.log(`Hasło dla użytkownika ${userId} zostało zaktualizowane pomyślnie`);
+      
+      // Sprawdzamy, czy hasło zostało poprawnie zapisane
+      let updatedUser;
+      if (dbType === 'postgres') {
+        [updatedUser] = await db.execute(
+          'SELECT id, email, generated_password FROM users WHERE id = $1',
+          [userId]
+        );
+      } else {
+        [updatedUser] = await db.execute(
+          'SELECT id, email, generated_password FROM users WHERE id = ?',
+          [userId]
+        );
+      }
+      
+      if (updatedUser && updatedUser.length > 0) {
+        console.log(`Sprawdzenie aktualizacji hasła dla użytkownika ${userId}:`, {
+          email: updatedUser[0].email,
+          generated_password: updatedUser[0].generated_password
+        });
+      }
+    } catch (dbError) {
+      console.error(`Błąd aktualizacji hasła dla użytkownika ${userId}:`, dbError);
+      throw dbError;
     }
     
     res.json({
