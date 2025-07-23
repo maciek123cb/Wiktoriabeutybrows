@@ -39,16 +39,16 @@ const activateUser = async (req, res, db, dbType, bcrypt) => {
     // Hashujemy hasło
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Aktualizujemy konto użytkownika
+    // Aktualizujemy konto użytkownika - tylko hasło, bez kolumny username
     if (dbType === 'postgres') {
       await db.execute(
-        'UPDATE users SET password_hash = $1, username = $2 WHERE id = $3',
-        [hashedPassword, login, userId]
+        'UPDATE users SET password_hash = $1 WHERE id = $2',
+        [hashedPassword, userId]
       );
     } else {
       await db.execute(
-        'UPDATE users SET password_hash = ?, username = ? WHERE id = ?',
-        [hashedPassword, login, userId]
+        'UPDATE users SET password_hash = ? WHERE id = ?',
+        [hashedPassword, userId]
       );
     }
     

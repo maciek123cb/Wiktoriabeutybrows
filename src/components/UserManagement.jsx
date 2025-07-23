@@ -109,8 +109,9 @@ const UserManagement = () => {
         
         if (data.success) {
           // Zapisz dane aktywacji i pokaż modal
+          // Używamy email jako login, ponieważ nie ma kolumny username w bazie
           setActivationData({
-            login: data.login,
+            login: data.user.email, // Używamy email jako login
             password: data.password,
             user: data.user
           })

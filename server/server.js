@@ -1244,31 +1244,29 @@ app.post('/api/admin/users/:userId/activate-account', verifyToken, async (req, r
       return res.status(400).json({ success: false, message: 'To konto jest już aktywne' });
     }
     
-    // Generujemy login i hasło
+    // Generujemy hasło (login to email)
     const accountUtils = require('./account-utils');
-    const login = accountUtils.generateLogin(user.first_name, user.last_name);
     const password = accountUtils.generatePassword(user.first_name, user.last_name);
     
     // Hashujemy hasło
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Aktualizujemy konto użytkownika
+    // Aktualizujemy konto użytkownika - tylko hasło, bez kolumny username
     if (dbType === 'postgres') {
       await db.execute(
-        'UPDATE users SET password_hash = $1, username = $2 WHERE id = $3',
-        [hashedPassword, login, userId]
+        'UPDATE users SET password_hash = $1 WHERE id = $2',
+        [hashedPassword, userId]
       );
     } else {
       await db.execute(
-        'UPDATE users SET password_hash = ?, username = ? WHERE id = ?',
-        [hashedPassword, login, userId]
+        'UPDATE users SET password_hash = ? WHERE id = ?',
+        [hashedPassword, userId]
       );
     }
     
     res.json({
       success: true,
       message: 'Konto zostało aktywowane',
-      login,
       password,
       user: {
         id: user.id,
