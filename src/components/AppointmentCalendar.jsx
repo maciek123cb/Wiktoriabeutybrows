@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar as CalendarIcon, Clock, User, Mail, Phone, Check, X, MessageSquare, Plus } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, User, Mail, Phone, Check, X, MessageSquare, Plus, Download } from 'lucide-react'
 import Calendar from './Calendar'
+import CalendarDayExportButton from './CalendarDayExportButton'
+import CalendarExportButton from './CalendarExportButton'
 import { API_URL } from '../config'
 
 const AppointmentCalendar = () => {
@@ -274,14 +276,24 @@ const AppointmentCalendar = () => {
           {selectedDate ? (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-800">
-                  {selectedDate.toLocaleDateString('pl-PL', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </h4>
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-gray-800">
+                    {selectedDate.toLocaleDateString('pl-PL', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </h4>
+                  
+                  {/* Przycisk eksportu kalendarza */}
+                  {appointments.length > 0 && (
+                    <CalendarDayExportButton 
+                      date={`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}
+                      className="text-sm px-2 py-1"
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-between items-center mb-4">
@@ -517,6 +529,11 @@ const AppointmentCalendar = () => {
                           <X className="w-4 h-4" />
                           <span>Usuń</span>
                         </button>
+                        <CalendarExportButton 
+                          appointmentId={appointment.id}
+                          isAdmin={true}
+                          className="text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100"
+                        />
                       </div>
                     </motion.div>
                   ))}

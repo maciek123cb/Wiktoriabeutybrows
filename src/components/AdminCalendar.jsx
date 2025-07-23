@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Clock, Trash2, Calendar as CalendarIcon, UserPlus } from 'lucide-react'
+import { Plus, Clock, Trash2, Calendar as CalendarIcon, UserPlus, Download } from 'lucide-react'
 import Calendar from './Calendar'
 import ManualAppointmentForm from './ManualAppointmentForm'
+import CalendarDayExportButton from './CalendarDayExportButton'
 import { API_URL } from '../config'
 
 const AdminCalendar = () => {
@@ -151,14 +152,24 @@ const AdminCalendar = () => {
           {selectedDate ? (
             <div className="space-y-6">
               <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-800">
-                  Wybrana data: {selectedDate.toLocaleDateString('pl-PL', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </h4>
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-gray-800">
+                    Wybrana data: {selectedDate.toLocaleDateString('pl-PL', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </h4>
+                  
+                  {/* Przycisk eksportu kalendarza */}
+                  {bookedSlots.length > 0 && (
+                    <CalendarDayExportButton 
+                      date={`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}
+                      className="text-sm px-2 py-1"
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Dodawanie nowego terminu */}
